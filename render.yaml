@@ -6,7 +6,7 @@ services:
     rootDir: backend
     buildCommand: pip install -r requirements.txt
     # (Optional) write SA JSON from a base64 env var before start
-    preDeployCommand: bash -lc 'mkdir -p /opt/render/project/etc && echo $GCP_SA_KEY_B64 | base64 -d > /opt/render/project/etc/gcp-sa.json'
+   
     startCommand: gunicorn app:app --workers=2 --threads=8 --timeout=0 --bind 0.0.0.0:$PORT
     plan: free
     envVars:
@@ -32,4 +32,5 @@ services:
     envVars:
       - key: VITE_API_BASE
         value: https://REPLACE_WITH_BACKEND_URL
+
 
