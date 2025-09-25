@@ -1,9 +1,12 @@
 services:
+  # --- Flask backend (web service) ---
   - type: web
     name: pubsub-backend
-    env: python
+    runtime: python              # was: env: python
     rootDir: backend
     buildCommand: pip install -r requirements.txt
+    # (Optional) write SA JSON from a base64 env var before start
+    preDeployCommand: bash -lc 'mkdir -p /opt/render/project/etc && echo $GCP_SA_KEY_B64 | base64 -d > /opt/render/project/etc/gcp-sa.json'
     startCommand: gunicorn app:app --workers=2 --threads=8 --timeout=0 --bind 0.0.0.0:$PORT
     plan: free
     envVars:
@@ -14,19 +17,19 @@ services:
       - key: IS4880-sub
         value: app-sub-pull
       - key: GOOGLE_APPLICATION_CREDENTIALS
-        value: /etc/secrets/gcp-sa.json
-    secretFiles:
-      - name: gcp-sa.json
-        # In the Render UI you'll paste your service account JSON as the file contents
-        # This will mount at /etc/secrets/gcp-sa.json inside the container
+        value: /opt/render/project/etc/gcp-sa.json
+      # Provide this value in the Render UI on first create (paste base64 of the SA JSON)
+      - key: GCP_SA_KEY_B64
+        sync: false
 
-  - type: web
+  # --- React frontend (static site) ---
+  - type: web                    # ← not "static"
     name: pubsub-frontend
+    runtime: static              # static sites use runtime: static
     rootDir: frontend
     buildCommand: npm install && npm run build
-    staticPublishPath: dist
+    staticPublishPath: dist      # folder to publish (e.g., dist or build)
     envVars:
       - key: VITE_API_BASE
-        # After the backend deploys, paste its URL here (e.g., https://pubsub-backend.onrender.com)
         value: https://REPLACE_WITH_BACKEND_URL
 
