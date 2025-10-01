@@ -1,4 +1,7 @@
 flask
 flask-cors
-google-cloud-pubsub
 gunicorn
+google-cloud-pubsub
+grpcio
+google-auth
+
