@@ -1,26 +1,23 @@
 services:
-  # --- Flask backend (web service) ---
   - type: web
     name: pubsub-backend
-    runtime: python              # was: env: python
+    runtime: python
     rootDir: backend
     buildCommand: pip install -r requirements.txt
-    # (Optional) write SA JSON from a base64 env var before start
-   
-    startCommand: gunicorn app:app --workers=2 --threads=8 --timeout=0 --bind 0.0.0.0:$PORT
+    # Decode the base64 key and then start gunicorn (works on Free)
+    startCommand: bash -lc 'echo "$GCP_SA_KEY_B64" | base64 -d > /tmp/gcp-sa.json && export GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp-sa.json && exec gunicorn app:app --workers=2 --threads=8 --timeout=0 --bind 0.0.0.0:$PORT'
     plan: free
     envVars:
-      - key: firm-catalyst-473221-r7
+      - key: GCP_PROJECT_ID
         value: YOUR_GCP_PROJECT_ID
-      - key: IS4880
+      - key: PUBSUB_TOPIC
         value: app-messages
-      - key: IS4880-sub
+      - key: PUBSUB_SUBSCRIPTION_PULL
         value: app-sub-pull
-      - key: GOOGLE_APPLICATION_CREDENTIALS
-        value: /opt/render/project/etc/gcp-sa.json
-      # Provide this value in the Render UI on first create (paste base64 of the SA JSON)
+      # paste your base64-encoded JSON key in the Render dashboard for this var
       - key: GCP_SA_KEY_B64
         sync: false
+
 
   # --- React frontend (static site) ---
   - type: web                    # ← not "static"
@@ -32,5 +29,6 @@ services:
     envVars:
       - key: VITE_API_BASE
         value: https://REPLACE_WITH_BACKEND_URL
+
 
 
