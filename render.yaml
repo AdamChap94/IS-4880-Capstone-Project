@@ -5,7 +5,7 @@ services:
     rootDir: backend
     buildCommand: pip install -r requirements.txt
     # Decode the base64 key and then start gunicorn (works on Free)
-    startCommand: bash -lc 'echo "$GCP_SA_KEY_B64" | base64 -d > /tmp/gcp-sa.json && export GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp-sa.json && exec gunicorn app:app --workers=2 --threads=8 --timeout=0 --bind 0.0.0.0:$PORT'
+    startCommand: bash -lc 'echo "$GCP_SA_KEY_B64" | base64 -d > /tmp/gcp-sa.json && export GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp-sa.json && exec gunicorn app:app --workers=1 --threads=8 --timeout=0 --bind 0.0.0.0:$PORT'
     plan: free
     envVars:
       - key: GCP_PROJECT_ID
@@ -29,6 +29,7 @@ services:
     envVars:
       - key: VITE_API_BASE
         value: https://REPLACE_WITH_BACKEND_URL
+
 
 
 
