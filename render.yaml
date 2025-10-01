@@ -9,7 +9,7 @@ services:
     plan: free
     envVars:
       - key: GCP_PROJECT_ID
-        value: YOUR_GCP_PROJECT_ID
+        value: firm-catalyst-473221-r7
       - key: PUBSUB_TOPIC
         value: app-messages
       - key: PUBSUB_SUBSCRIPTION_PULL
@@ -29,6 +29,7 @@ services:
     envVars:
       - key: VITE_API_BASE
         value: https://pubsub-backend.onrender.com
+
 
 
 
