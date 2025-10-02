@@ -3,13 +3,9 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from google.cloud import pubsub_v1
 from google.api_core.exceptions import GoogleAPICallError
+from google.api_core.exceptions import NotFound
 
-# --- If you chose the INLINE JSON method (Option B), uncomment next block ---
-# if "GOOGLE_APPLICATION_CREDENTIALS_JSON" in os.environ:
-#     _path = "/tmp/gcp-sa.json"
-#     with open(_path, "w") as _f:
-#         _f.write(os.environ["GOOGLE_APPLICATION_CREDENTIALS_JSON"])
-#     os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = _path
+
 
 # --- Config via env ---
 PROJECT_ID = os.environ.get("GCP_PROJECT_ID", "").strip()
