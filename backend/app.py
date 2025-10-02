@@ -21,6 +21,13 @@ if not PROJECT_ID:
 print(f"[BOOT] PROJECT_ID={PROJECT_ID} TOPIC_ID={TOPIC_ID} SUB_PULL_ID={SUB_PULL_ID}", flush=True)
 print(f"[BOOT] GOOGLE_APPLICATION_CREDENTIALS={os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')}", flush=True)
 
+try:
+    with open(os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"), "r") as f:
+        info = json.load(f)
+        print(f"[BOOT] SERVICE_ACCOUNT_EMAIL={info.get('client_email')}", flush=True)
+except Exception as e:
+    print(f"[BOOT] could not read SA file: {e!r}", flush=True)
+
 # Flask
 app = Flask(__name__)
 CORS(app)  # TODO: restrict in prod
