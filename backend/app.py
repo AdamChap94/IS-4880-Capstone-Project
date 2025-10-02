@@ -1,21 +1,18 @@
-import os, json, threading, collections, time, sys
+import os, json, threading, collections, sys
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from google.cloud import pubsub_v1
-from google.api_core.exceptions import GoogleAPICallError
 from google.api_core.exceptions import NotFound
 
-
-
-# --- Config via env ---
+# -----------------------------
+# Config via env
+# -----------------------------
 PROJECT_ID = os.environ.get("GCP_PROJECT_ID", "").strip()
 TOPIC_ID = os.environ.get("PUBSUB_TOPIC", "app-messages").strip()
 SUB_PULL_ID = os.environ.get("PUBSUB_SUBSCRIPTION_PULL", "app-sub-pull").strip()
 
-def die(msg):
+def die(msg: str):
     print(f"[FATAL] {msg}", file=sys.stderr, flush=True)
-    # exit only if running as main (gunicorn imports module, so don't kill master)
-    # We'll just raise to surface the problem in logs.
     raise RuntimeError(msg)
 
 if not PROJECT_ID:
@@ -24,18 +21,37 @@ if not PROJECT_ID:
 print(f"[BOOT] PROJECT_ID={PROJECT_ID} TOPIC_ID={TOPIC_ID} SUB_PULL_ID={SUB_PULL_ID}", flush=True)
 print(f"[BOOT] GOOGLE_APPLICATION_CREDENTIALS={os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')}", flush=True)
 
+# Flask
 app = Flask(__name__)
 CORS(app)  # TODO: restrict in prod
 
+# Publisher + topic path
 try:
     publisher = pubsub_v1.PublisherClient()
     topic_path = publisher.topic_path(PROJECT_ID, TOPIC_ID)
     print(f"[BOOT] topic_path={topic_path}", flush=True)
+    # Verify topic exists (helps catch wrong project/topic)
+    admin_pub = pubsub_v1.PublisherClient()
+    admin_pub.get_topic(request={"topic": topic_path})
+    print(f"[BOOT] Verified topic exists: {topic_path}", flush=True)
+except NotFound:
+    print(f"[BOOT] TOPIC NOT FOUND: {topic_path}", flush=True)
 except Exception as e:
     die(f"Failed to init PublisherClient/topic_path: {e!r}")
 
 # In-memory ring buffer for UI (POC-friendly)
 RECENT = collections.deque(maxlen=200)
+
+# Keep globals so they don't get GC'd
+SUBSCRIBER = None
+SUB_FUTURE = None
+
+# -----------------------------
+# Routes
+# -----------------------------
+@app.route("/")
+def index():
+    return "backend is running", 200
 
 @app.route("/healthz")
 def healthz():
@@ -51,8 +67,55 @@ def debug_env():
         "recent_len": len(RECENT),
     }), 200
 
+@app.route("/_debug/state")
+def debug_state():
+    return jsonify({
+        "project": PROJECT_ID,
+        "topic": TOPIC_ID,
+        "subscription": SUB_PULL_ID,
+        "recent_len": len(RECENT),
+    }), 200
+
+@app.route("/_debug/publish")
+def debug_publish():
+    # Publish a message from the backend itself (same creds/project/topic the app uses)
+    from time import time
+    msg = f"debug-{int(time())}"
+    try:
+        f = publisher.publish(topic_path, msg.encode("utf-8"), source="backend-debug")
+        msg_id = f.result(timeout=20)
+        return {"messageId": msg_id, "data": msg}, 200
+    except Exception as e:
+        return {"error": "publish failed", "details": str(e)}, 500
+
+@app.route("/_debug/pull_once")
+def debug_pull_once():
+    # Pull a few messages immediately and append them to RECENT
+    try:
+        sub = pubsub_v1.SubscriberClient()
+        sub_path = sub.subscription_path(PROJECT_ID, SUB_PULL_ID)
+        resp = sub.pull(subscription=sub_path, max_messages=5, retry=None, timeout=10)
+        out = []
+        for rm in resp.received_messages:
+            m = rm.message
+            item = {
+                "data": m.data.decode("utf-8"),
+                "attributes": dict(m.attributes or {}),
+                "messageId": m.message_id,
+                "publishTime": str(m.publish_time),
+            }
+            out.append(item)
+            RECENT.append(item)
+        if resp.received_messages:
+            sub.acknowledge(subscription=sub_path, ack_ids=[rm.ack_id for rm in resp.received_messages])
+        return {"pulled": out, "recent_len": len(RECENT)}, 200
+    except NotFound:
+        return {"error": "subscription not found", "subscription": SUB_PULL_ID}, 404
+    except Exception as e:
+        return {"error": "pull_once failed", "details": str(e)}, 500
+
 @app.route("/publish", methods=["POST"])
-def publish():
+def publish_route():
     payload = request.get_json(silent=True) or {}
     msg = (payload.get("message") or "").strip()
     attrs = payload.get("attributes") or {}
@@ -63,7 +126,6 @@ def publish():
             topic_path, msg.encode("utf-8"),
             **{k: str(v) for k, v in attrs.items()}
         )
-        # Give it a bit more time in low-power envs
         msg_id = future.result(timeout=20)
         return jsonify({"status": "published", "messageId": msg_id}), 200
     except Exception as e:
@@ -75,58 +137,55 @@ def messages():
     # newest first
     return jsonify(list(RECENT)[::-1]), 200
 
+# -----------------------------
+# Streaming pull
+# -----------------------------
 def start_streaming_pull():
+    global SUBSCRIBER, SUB_FUTURE
     try:
-        subscriber = pubsub_v1.SubscriberClient()
-        sub_path = subscriber.subscription_path(PROJECT_ID, SUB_PULL_ID)
+        SUBSCRIBER = pubsub_v1.SubscriberClient()
+        sub_path = SUBSCRIBER.subscription_path(PROJECT_ID, SUB_PULL_ID)
         print(f"[PULL] starting streaming pull on {sub_path}", flush=True)
+
+        # Verify subscription exists and see its linkage/filter
+        try:
+            sub_info = SUBSCRIBER.get_subscription(request={"subscription": sub_path})
+            print(f"[PULL] Verified subscription; topic={sub_info.topic} filter={getattr(sub_info, 'filter', '')}", flush=True)
+        except NotFound:
+            print(f"[PULL] SUBSCRIPTION NOT FOUND: {sub_path}", flush=True)
 
         def callback(message: pubsub_v1.subscriber.message.Message):
             try:
                 data = message.data.decode("utf-8")
-                RECENT.append({
+                item = {
                     "data": data,
                     "attributes": dict(message.attributes or {}),
                     "messageId": message.message_id,
                     "publishTime": str(message.publish_time),
-                })
+                }
+                RECENT.append(item)
+                print(f"[PULL] got message: {item}", flush=True)
                 message.ack()
             except Exception as e:
                 print(f"[PULL] callback error: {e!r}", flush=True)
                 message.nack()
 
-        future = subscriber.subscribe(sub_path, callback=callback)
+        SUB_FUTURE = SUBSCRIBER.subscribe(sub_path, callback=callback)
 
         def _watch():
             try:
-                future.result()
+                SUB_FUTURE.result()
             except Exception as e:
                 print(f"[PULL] streaming future died: {e!r}", flush=True)
-        t = threading.Thread(target=_watch, daemon=True)
-        t.start()
+
+        threading.Thread(target=_watch, daemon=True).start()
         print("[PULL] thread started", flush=True)
     except Exception as e:
         print(f"[PULL] failed to start: {e!r}", flush=True)
 
-# Kick off the pull worker (consider 1 worker during bring-up)
+# Kick off the pull worker (run with Gunicorn --workers=1 while debugging)
 start_streaming_pull()
 
+# Local dev only
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
-
-@app.route("/_debug/pull_once")
-def debug_pull_once():
-    from google.cloud import pubsub_v1
-    sub = pubsub_v1.SubscriberClient()
-    sub_path = sub.subscription_path(PROJECT_ID, SUB_PULL_ID)
-    resp = sub.pull(subscription=sub_path, max_messages=5, retry=None, timeout=10)
-    out = []
-    for rm in resp.received_messages:
-        m = rm.message
-        out.append({"data": m.data.decode("utf-8"), "attributes": dict(m.attributes)})
-    # ack what we pulled so they don’t loop forever
-    if resp.received_messages:
-        sub.acknowledge(subscription=sub_path, ack_ids=[rm.ack_id for rm in resp.received_messages])
-    return {"pulled": out}, 200
-
-
