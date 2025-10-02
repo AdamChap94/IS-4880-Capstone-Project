@@ -118,3 +118,19 @@ start_streaming_pull()
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
 
+@app.route("/_debug/pull_once")
+def debug_pull_once():
+    from google.cloud import pubsub_v1
+    sub = pubsub_v1.SubscriberClient()
+    sub_path = sub.subscription_path(PROJECT_ID, SUB_PULL_ID)
+    resp = sub.pull(subscription=sub_path, max_messages=5, retry=None, timeout=10)
+    out = []
+    for rm in resp.received_messages:
+        m = rm.message
+        out.append({"data": m.data.decode("utf-8"), "attributes": dict(m.attributes)})
+    # ack what we pulled so they don’t loop forever
+    if resp.received_messages:
+        sub.acknowledge(subscription=sub_path, ack_ids=[rm.ack_id for rm in resp.received_messages])
+    return {"pulled": out}, 200
+
+
