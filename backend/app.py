@@ -1,4 +1,4 @@
-import os, json, threading, collections, sys
+import os, json, threading, collections, sys,
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from google.cloud import pubsub_v1
@@ -48,6 +48,7 @@ except Exception as e:
 
 # In-memory ring buffer for UI (POC-friendly)
 RECENT = collections.deque(maxlen=200)
+RECENT_LOCK = threading.Lock()
 
 # Keep globals so they don't get GC'd
 SUBSCRIBER = None
