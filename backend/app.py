@@ -62,7 +62,7 @@ def start_sync_poll_loop():
     threading.Thread(target=_loop, daemon=True).start()
     print("[SYNC] thread started", flush=True)
 
-                if resp.received_messages:
+             if resp.received_messages:
                     ack_ids = []
                     for rm in resp.received_messages:
                         m = rm.message
