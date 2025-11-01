@@ -213,9 +213,11 @@ def publish_route():
 
 @app.route("/messages", methods=["GET"])
 def messages():
-   with RECENT_LOCK:
-        out = list(RECENT)[::-1]  # newest first
+    # newest first; use the same lock the poller uses
+    with RECENT_LOCK:
+        out = list(RECENT)[::-1]
     return jsonify(out), 200
+
 
 def debug_subscription():
     from flask import jsonify
