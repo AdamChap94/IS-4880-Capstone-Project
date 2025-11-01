@@ -62,34 +62,6 @@ def start_sync_poll_loop():
     threading.Thread(target=_loop, daemon=True).start()
     print("[SYNC] thread started", flush=True)
 
-        if resp.received_messages:
-                    ack_ids = []
-                    for rm in resp.received_messages:
-                        m = rm.message
-                        item = {
-                            "data": m.data.decode("utf-8"),
-                            "attributes": dict(m.attributes or {}),
-                            "messageId": m.message_id,
-                            "publishTime": str(m.publish_time),
-                        }
-                        RECENT.append(item)
-                        ack_ids.append(rm.ack_id)
-                    sub.acknowledge(request={"subscription": sub_path, "ack_ids": ack_ids})
-                    _LAST_PULL_AT = int(time.time())
-                    print(f"[SYNC] pulled {len(ack_ids)} msg(s), recent_len={len(RECENT)}", flush=True)
-                else:
-                    # No messages in this cycle; short sleep to avoid hot loop
-                    time.sleep(1)
-            except Exception as e:
-                # Network timeouts, EOFs, etc. are normal on shared hosts—just keep going
-                print(f"[SYNC] poll error: {e!r}", flush=True)
-                time.sleep(2)
-
-    t = threading.Thread(target=_loop, daemon=True)
-    t.start()
-    print("[SYNC] thread started", flush=True)
-
-
 def die(msg: str):
     print(f"[FATAL] {msg}", file=sys.stderr, flush=True)
     raise RuntimeError(msg)
