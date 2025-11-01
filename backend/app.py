@@ -3,6 +3,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from google.cloud import pubsub_v1
 from google.api_core.exceptions import NotFound
+from google.oauth2 import service_account
 
 # -----------------------------
 # Config via env
@@ -11,6 +12,12 @@ PROJECT_ID = os.environ.get("GCP_PROJECT_ID", "").strip()
 TOPIC_ID = os.environ.get("PUBSUB_TOPIC", "app-messages").strip()
 SUB_PULL_ID = os.environ.get("PUBSUB_SUBSCRIPTION_PULL", "app-sub-pull-test").strip()
 USE_SYNC_POLL = os.environ.get("USE_SYNC_POLL", "0") == "1"
+CREDS_PATH = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+if not CREDS_PATH:
+    raise RuntimeError("GOOGLE_APPLICATION_CREDENTIALS env var not set")
+
+CREDS = service_account.Credentials.from_service_account_file(CREDS_PATH)
+
 
 
 def die(msg: str):
@@ -65,7 +72,7 @@ CORS(app)  # TODO: restrict in prod
 
 # Publisher + topic path
 try:
-    publisher = pubsub_v1.PublisherClient()
+    publisher = pubsub_v1.PublisherClient(credentials=CREDS)
     topic_path = publisher.topic_path(PROJECT_ID, TOPIC_ID)
     print(f"[BOOT] topic_path={topic_path}", flush=True)
     # Verify topic exists (helps catch wrong project/topic)
@@ -82,7 +89,7 @@ RECENT = collections.deque(maxlen=200)
 RECENT_LOCK = threading.Lock()
 
 # Keep globals so they don't get GC'd
-SUBSCRIBER = None
+SUBSCRIBER = pubsub_v1.SubscriberClient(credentials=CREDS)
 SUB_FUTURE = None
 
 # -----------------------------
