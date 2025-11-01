@@ -144,6 +144,38 @@ def publish_route():
 def messages():
     # newest first
     return jsonify(list(RECENT)[::-1]), 200
+@app.route("/_debug/subscription")
+def debug_subscription():
+    from flask import jsonify
+    from google.cloud import pubsub_v1
+    sc = pubsub_v1.SubscriberClient()
+    sub_path = sc.subscription_path(PROJECT_ID, SUB_PULL_ID)
+    try:
+        s = sc.get_subscription(request={"subscription": sub_path})
+        return jsonify({
+            "subscription": SUB_PULL_ID,
+            "full_path": sub_path,
+            "topic": s.topic,
+            "filter": getattr(s, "filter", ""),
+            "ack_deadline_seconds": s.ack_deadline_seconds,
+            "message_retention_duration": str(getattr(s, "message_retention_duration", "")),
+        }), 200
+    except Exception as e:
+        return jsonify({"error": str(e), "subscription": SUB_PULL_ID}), 500
+
+@app.route("/_debug/iam")
+def debug_iam():
+    from flask import jsonify
+    from google.cloud import pubsub_v1
+    sc = pubsub_v1.SubscriberClient()
+    sub_path = sc.subscription_path(PROJECT_ID, SUB_PULL_ID)
+    perms = ["pubsub.subscriptions.consume", "pubsub.subscriptions.pull"]
+    try:
+        resp = sc.test_iam_permissions(request={"resource": sub_path, "permissions": perms})
+        return jsonify({"resource": sub_path, "granted": resp.permissions}), 200
+    except Exception as e:
+        return jsonify({"error": str(e), "resource": sub_path}), 500
+
 
 # -----------------------------
 # Streaming pull
