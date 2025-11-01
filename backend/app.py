@@ -10,6 +10,8 @@ from google.api_core.exceptions import NotFound
 PROJECT_ID = os.environ.get("GCP_PROJECT_ID", "").strip()
 TOPIC_ID = os.environ.get("PUBSUB_TOPIC", "app-messages").strip()
 SUB_PULL_ID = os.environ.get("PUBSUB_SUBSCRIPTION_PULL", "app-sub-pull-test").strip()
+USE_SYNC_POLL = os.environ.get("USE_SYNC_POLL", "0") == "1"
+
 
 def die(msg: str):
     print(f"[FATAL] {msg}", file=sys.stderr, flush=True)
@@ -27,6 +29,35 @@ try:
         print(f"[BOOT] SERVICE_ACCOUNT_EMAIL={info.get('client_email')}", flush=True)
 except Exception as e:
     print(f"[BOOT] could not read SA file: {e!r}", flush=True)
+def start_sync_poll():
+    from time import sleep
+    from google.cloud import pubsub_v1
+    client = pubsub_v1.SubscriberClient()
+    sub_path = client.subscription_path(PROJECT_ID, SUB_PULL_ID)
+    print(f"[PULL_SYNC] loop start on {sub_path}", flush=True)
+
+    while True:
+        try:
+            resp = client.pull(subscription=sub_path, max_messages=10, retry=None, timeout=20)
+            if resp.received_messages:
+                ack_ids = []
+                for rm in resp.received_messages:
+                    m = rm.message
+                    item = {
+                        "data": m.data.decode("utf-8"),
+                        "attributes": dict(m.attributes or {}),
+                        "messageId": m.message_id,
+                        "publishTime": str(m.publish_time),
+                    }
+                    RECENT.append(item)
+                    ack_ids.append(rm.ack_id)
+                    print(f"[PULL_SYNC] {item}", flush=True)
+                client.acknowledge(subscription=sub_path, ack_ids=ack_ids)
+        except Exception as e:
+            print(f"[PULL_SYNC] error: {e!r}", flush=True)
+            sleep(2)
+        else:
+            sleep(1)
 
 # Flask
 app = Flask(__name__)
@@ -230,7 +261,11 @@ def start_streaming_pull():
 
 
 # Kick off the pull worker (run with Gunicorn --workers=1 while debugging)
-start_streaming_pull()
+if USE_SYNC_POLL:
+    start_sync_poll()
+else:
+    start_streaming_pull()
+
 
 # Local dev only
 if __name__ == "__main__":
