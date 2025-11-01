@@ -4,6 +4,9 @@ from flask_cors import CORS
 from google.cloud import pubsub_v1
 from google.api_core.exceptions import NotFound
 from google.oauth2 import service_account
+import time
+from google.oauth2 import service_account
+
 
 # -----------------------------
 # Config via env
@@ -12,12 +15,57 @@ PROJECT_ID = os.environ.get("GCP_PROJECT_ID", "").strip()
 TOPIC_ID = os.environ.get("PUBSUB_TOPIC", "app-messages").strip()
 SUB_PULL_ID = os.environ.get("PUBSUB_SUBSCRIPTION_PULL", "app-sub-pull-test").strip()
 USE_SYNC_POLL = os.environ.get("USE_SYNC_POLL", "0") == "1"
+_LAST_PULL_AT = 0 
 CREDS_PATH = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
 if not CREDS_PATH:
     raise RuntimeError("GOOGLE_APPLICATION_CREDENTIALS env var not set")
 
 CREDS = service_account.Credentials.from_service_account_file(CREDS_PATH)
 
+def start_sync_poll_loop():
+    """
+    Very robust background loop that periodically pulls messages and acks them.
+    Use this if streaming pull is flaky on your host.
+    """
+    sub = pubsub_v1.SubscriberClient(credentials=CREDS)
+    sub_path = sub.subscription_path(PROJECT_ID, SUB_PULL_ID)
+    print(f"[SYNC] starting sync poll loop on {sub_path}", flush=True)
+
+    def _loop():
+        global _LAST_PULL_AT
+        while True:
+            try:
+                resp = sub.pull(
+                    request={"subscription": sub_path, "max_messages": 10},
+                    retry=None,
+                    timeout=10,  # wait up to 10s for messages
+                )
+                if resp.received_messages:
+                    ack_ids = []
+                    for rm in resp.received_messages:
+                        m = rm.message
+                        item = {
+                            "data": m.data.decode("utf-8"),
+                            "attributes": dict(m.attributes or {}),
+                            "messageId": m.message_id,
+                            "publishTime": str(m.publish_time),
+                        }
+                        RECENT.append(item)
+                        ack_ids.append(rm.ack_id)
+                    sub.acknowledge(request={"subscription": sub_path, "ack_ids": ack_ids})
+                    _LAST_PULL_AT = int(time.time())
+                    print(f"[SYNC] pulled {len(ack_ids)} msg(s), recent_len={len(RECENT)}", flush=True)
+                else:
+                    # No messages in this cycle; short sleep to avoid hot loop
+                    time.sleep(1)
+            except Exception as e:
+                # Network timeouts, EOFs, etc. are normal on shared hosts—just keep going
+                print(f"[SYNC] poll error: {e!r}", flush=True)
+                time.sleep(2)
+
+    t = threading.Thread(target=_loop, daemon=True)
+    t.start()
+    print("[SYNC] thread started", flush=True)
 
 
 def die(msg: str):
@@ -124,7 +172,6 @@ def debug_state():
 
 @app.route("/_debug/publish")
 def debug_publish():
-    # Publish a message from the backend itself (same creds/project/topic the app uses)
     from time import time
     msg = f"debug-{int(time())}"
     try:
@@ -140,7 +187,7 @@ def debug_pull_once():
     try:
         sub = pubsub_v1.SubscriberClient()
         sub_path = sub.subscription_path(PROJECT_ID, SUB_PULL_ID)
-        resp = sub.pull(subscription=sub_path, max_messages=5, retry=None, timeout=10)
+        resp = sub.pull(subscription=sub_path, max_messages=5, retry=None, timeout=30)
         out = []
         for rm in resp.received_messages:
             m = rm.message
