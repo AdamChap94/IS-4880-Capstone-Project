@@ -166,6 +166,24 @@ def debug_state():
         "recent_len": len(RECENT),
     }), 200
 
+@app.route("/_debug/subscription_info")
+def debug_subscription_info():
+    try:
+        sub = pubsub_v1.SubscriberClient(credentials=CREDS)
+        sub_path = sub.subscription_path(PROJECT_ID, SUB_PULL_ID)
+        info = sub.get_subscription(request={"subscription": sub_path})
+        return {
+            "subscription": SUB_PULL_ID,
+            "topic": info.topic,
+            "filter": getattr(info, "filter", ""),
+            "ack_deadline_seconds": info.ack_deadline_seconds,
+            "retain_acked_messages": info.retain_acked_messages,
+            "detached": getattr(info, "detached", False),
+        }, 200
+    except Exception as e:
+        return {"error": str(e)}, 500
+
+
 @app.route("/_debug/publish")
 def debug_publish():
     from time import time
