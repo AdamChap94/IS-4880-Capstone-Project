@@ -23,10 +23,6 @@ if not CREDS_PATH:
 CREDS = service_account.Credentials.from_service_account_file(CREDS_PATH)
 
 def start_sync_poll_loop():
-    """
-    Very robust background loop that periodically pulls messages and acks them.
-    Use this if streaming pull is flaky on your host.
-    """
     sub = pubsub_v1.SubscriberClient(credentials=CREDS)
     sub_path = sub.subscription_path(PROJECT_ID, SUB_PULL_ID)
     print(f"[SYNC] starting sync poll loop on {sub_path}", flush=True)
@@ -124,7 +120,7 @@ try:
     topic_path = publisher.topic_path(PROJECT_ID, TOPIC_ID)
     print(f"[BOOT] topic_path={topic_path}", flush=True)
     # Verify topic exists (helps catch wrong project/topic)
-    admin_pub = pubsub_v1.PublisherClient()
+    admin_pub = pubsub_v1.PublisherClient(credentials=CREDS)
     admin_pub.get_topic(request={"topic": topic_path})
     print(f"[BOOT] Verified topic exists: {topic_path}", flush=True)
 except NotFound:
@@ -185,9 +181,9 @@ def debug_publish():
 def debug_pull_once():
     # Pull a few messages immediately and append them to RECENT
     try:
-        sub = pubsub_v1.SubscriberClient()
+        sub = pubsub_v1.SubscriberClient(credentials=CREDS)
         sub_path = sub.subscription_path(PROJECT_ID, SUB_PULL_ID)
-        resp = sub.pull(subscription=sub_path, max_messages=5, retry=None, timeout=30)
+        resp = sub.pull(subscription=sub_path, max_messages=5, retry=None, timeout=120)
         out = []
         for rm in resp.received_messages:
             m = rm.message
@@ -274,7 +270,7 @@ def start_streaming_pull():
         global SUBSCRIBER, SUB_FUTURE
         while True:
             try:
-                SUBSCRIBER = pubsub_v1.SubscriberClient()
+                SUBSCRIBER = pubsub_v1.SubscriberClient(credentials=CREDS)
                 sub_path = SUBSCRIBER.subscription_path(PROJECT_ID, SUB_PULL_ID)
                 print(f"[PULL] Connecting to {sub_path}", flush=True)
 
@@ -315,7 +311,7 @@ def start_streaming_pull():
 
 # Kick off the pull worker (run with Gunicorn --workers=1 while debugging)
 if USE_SYNC_POLL:
-    start_sync_poll()
+    start_sync_poll_loop()
 else:
     start_streaming_pull()
 
