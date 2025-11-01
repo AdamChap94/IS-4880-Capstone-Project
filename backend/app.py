@@ -7,7 +7,6 @@ from google.oauth2 import service_account
 import time
 from google.oauth2 import service_account
 
-
 # -----------------------------
 # Config via env
 # -----------------------------
@@ -34,8 +33,35 @@ def start_sync_poll_loop():
                 resp = sub.pull(
                     request={"subscription": sub_path, "max_messages": 10},
                     retry=None,
-                    timeout=10,  # wait up to 10s for messages
+                    timeout=10,
                 )
+                # mark that we attempted a pull (even if empty)
+                _LAST_PULL_AT = int(time.time())
+
+                if resp.received_messages:
+                    ack_ids = []
+                    for rm in resp.received_messages:
+                        m = rm.message
+                        item = {
+                            "data": m.data.decode("utf-8"),
+                            "attributes": dict(m.attributes or {}),
+                            "messageId": m.message_id,
+                            "publishTime": str(m.publish_time),
+                        }
+                        with RECENT_LOCK:
+                            RECENT.append(item)
+                        ack_ids.append(rm.ack_id)
+                    sub.acknowledge(request={"subscription": sub_path, "ack_ids": ack_ids})
+                    print(f"[SYNC] pulled {len(ack_ids)} msg(s), recent_len={len(RECENT)}", flush=True)
+                else:
+                    time.sleep(1)
+            except Exception as e:
+                print(f"[SYNC] poll error: {e!r}", flush=True)
+                time.sleep(2)
+
+    threading.Thread(target=_loop, daemon=True).start()
+    print("[SYNC] thread started", flush=True)
+
                 if resp.received_messages:
                     ack_ids = []
                     for rm in resp.received_messages:
@@ -80,29 +106,6 @@ try:
         print(f"[BOOT] SERVICE_ACCOUNT_EMAIL={info.get('client_email')}", flush=True)
 except Exception as e:
     print(f"[BOOT] could not read SA file: {e!r}", flush=True)
-
-    while True:
-        try:
-            resp = client.pull(subscription=sub_path, max_messages=10, retry=None, timeout=20)
-            if resp.received_messages:
-                ack_ids = []
-                for rm in resp.received_messages:
-                    m = rm.message
-                    item = {
-                        "data": m.data.decode("utf-8"),
-                        "attributes": dict(m.attributes or {}),
-                        "messageId": m.message_id,
-                        "publishTime": str(m.publish_time),
-                    }
-                    RECENT.append(item)
-                    ack_ids.append(rm.ack_id)
-                    print(f"[PULL_SYNC] {item}", flush=True)
-                client.acknowledge(subscription=sub_path, ack_ids=ack_ids)
-        except Exception as e:
-            print(f"[PULL_SYNC] error: {e!r}", flush=True)
-            sleep(2)
-        else:
-            sleep(1)#
 
 # Flask
 app = Flask(__name__)
@@ -243,7 +246,7 @@ def messages():
 def debug_subscription():
     from flask import jsonify
     from google.cloud import pubsub_v1
-    sc = pubsub_v1.SubscriberClient()
+    sc = pubsub_v1.SubscriberClient(credentials=CREDS)
     sub_path = sc.subscription_path(PROJECT_ID, SUB_PULL_ID)
     try:
         s = sc.get_subscription(request={"subscription": sub_path})
