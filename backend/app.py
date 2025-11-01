@@ -54,6 +54,7 @@ def start_sync_poll_loop():
                     sub.acknowledge(request={"subscription": sub_path, "ack_ids": ack_ids})
                     print(f"[SYNC] pulled {len(ack_ids)} msg(s), recent_len={len(RECENT)}", flush=True)
                 else:
+                    print("[SYNC] no messages in this cycle", flush=True)
                     time.sleep(1)
             except Exception as e:
                 print(f"[SYNC] poll error: {e!r}", flush=True)
@@ -243,6 +244,47 @@ def debug_iam():
         return {"resource": resource, "asked": perms, "granted": list(resp.permissions)}, 200
     except Exception as e:
         return {"resource": resource, "asked": perms, "error": str(e)}, 500
+
+@app.route("/_debug/pull_long")
+def debug_pull_long():
+    try:
+        sub = pubsub_v1.SubscriberClient(credentials=CREDS)
+        sub_path = sub.subscription_path(PROJECT_ID, SUB_PULL_ID)
+        print(f"[PULL_LONG] pulling for 60s on {sub_path}", flush=True)
+
+        deadline = time.time() + 60
+        total = 0
+        while time.time() < deadline:
+            resp = sub.pull(
+                request={"subscription": sub_path, "max_messages": 10},
+                retry=None,
+                timeout=10,
+            )
+            if resp.received_messages:
+                ack_ids = []
+                for rm in resp.received_messages:
+                    m = rm.message
+                    item = {
+                        "data": m.data.decode("utf-8"),
+                        "attributes": dict(m.attributes or {}),
+                        "messageId": m.message_id,
+                        "publishTime": str(m.publish_time),
+                    }
+                    with RECENT_LOCK:
+                        RECENT.append(item)
+                # ack everything we got in this batch
+                    ack_ids.append(rm.ack_id)
+                sub.acknowledge(request={"subscription": sub_path, "ack_ids": ack_ids})
+                total += len(ack_ids)
+                print(f"[PULL_LONG] acked {len(ack_ids)} (total {total}), recent_len={len(RECENT)}", flush=True)
+            else:
+                print("[PULL_LONG] no messages, waiting...", flush=True)
+                time.sleep(2)
+
+        return {"pulled_total": total, "recent_len": len(RECENT)}, 200
+    except Exception as e:
+        return {"error": str(e)}, 500
+        
 
 
 
