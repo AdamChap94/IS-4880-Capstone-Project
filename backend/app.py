@@ -80,12 +80,6 @@ try:
         print(f"[BOOT] SERVICE_ACCOUNT_EMAIL={info.get('client_email')}", flush=True)
 except Exception as e:
     print(f"[BOOT] could not read SA file: {e!r}", flush=True)
-def start_sync_poll():
-    from time import sleep
-    from google.cloud import pubsub_v1
-    client = pubsub_v1.SubscriberClient()
-    sub_path = client.subscription_path(PROJECT_ID, SUB_PULL_ID)
-    print(f"[PULL_SYNC] loop start on {sub_path}", flush=True)
 
     while True:
         try:
