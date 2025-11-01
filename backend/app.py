@@ -9,7 +9,7 @@ from google.api_core.exceptions import NotFound
 # -----------------------------
 PROJECT_ID = os.environ.get("GCP_PROJECT_ID", "").strip()
 TOPIC_ID = os.environ.get("PUBSUB_TOPIC", "app-messages").strip()
-SUB_PULL_ID = os.environ.get("PUBSUB_SUBSCRIPTION_PULL", "app-sub-pull").strip()
+SUB_PULL_ID = os.environ.get("PUBSUB_SUBSCRIPTION_PULL", "app-sub-pull-test").strip()
 
 def die(msg: str):
     print(f"[FATAL] {msg}", file=sys.stderr, flush=True)
