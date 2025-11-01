@@ -196,16 +196,6 @@ def start_streaming_pull():
     threading.Thread(target=run_pull, daemon=True).start()
 
 
-        def _watch():
-            try:
-                SUB_FUTURE.result()
-            except Exception as e:
-                print(f"[PULL] streaming future died: {e!r}", flush=True)
-
-        threading.Thread(target=_watch, daemon=True).start()
-        print("[PULL] thread started", flush=True)
-    except Exception as e:
-        print(f"[PULL] failed to start: {e!r}", flush=True)
 
 # Kick off the pull worker (run with Gunicorn --workers=1 while debugging)
 start_streaming_pull()
