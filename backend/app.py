@@ -1,4 +1,4 @@
-import os, json, threading, collections, sys,
+import os, json, threading, collections, sys
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from google.cloud import pubsub_v1
