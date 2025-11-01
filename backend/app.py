@@ -108,7 +108,7 @@ def start_sync_poll():
             print(f"[PULL_SYNC] error: {e!r}", flush=True)
             sleep(2)
         else:
-            sleep(1)
+            sleep(1)#
 
 # Flask
 app = Flask(__name__)
@@ -160,10 +160,12 @@ def debug_env():
 @app.route("/_debug/state")
 def debug_state():
     return jsonify({
-        "project": PROJECT_ID,
+        "use_sync_poll": USE_SYNC_POLL,
+        "recent_len": len(RECENT),
+        "last_pull_at": _LAST_PULL_AT,
         "topic": TOPIC_ID,
         "subscription": SUB_PULL_ID,
-        "recent_len": len(RECENT),
+        "project": PROJECT_ID,
     }), 200
 
 @app.route("/_debug/subscription_info")
