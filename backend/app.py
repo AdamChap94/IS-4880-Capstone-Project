@@ -213,9 +213,10 @@ def publish_route():
 
 @app.route("/messages", methods=["GET"])
 def messages():
-    # newest first
-    return jsonify(list(RECENT)[::-1]), 200
-@app.route("/_debug/subscription")
+   with RECENT_LOCK:
+        out = list(RECENT)[::-1]  # newest first
+    return jsonify(out), 200
+
 def debug_subscription():
     from flask import jsonify
     from google.cloud import pubsub_v1
@@ -282,6 +283,29 @@ def debug_pull_long():
                 time.sleep(2)
 
         return {"pulled_total": total, "recent_len": len(RECENT)}, 200
+    except Exception as e:
+        return {"error": str(e)}, 500
+
+@app.route("/_debug/whoami")
+def debug_whoami():
+    # helps confirm single-process, single-worker behavior
+    return {
+        "pid": os.getpid(),
+        "thread_count": threading.active_count(),
+        "use_sync_poll": bool(int(os.environ.get("USE_SYNC_POLL", "1"))),
+    }, 200
+
+@app.route("/_debug/messages_debug")
+def messages_debug():
+    # ALWAYS read under the same lock used by the poller
+    try:
+        items = []
+        with RECENT_LOCK:
+            items = list(RECENT)
+        return {
+            "len": len(items),
+            "items_preview": items[-5:],  # last 5 (oldest→newest inside preview)
+        }, 200
     except Exception as e:
         return {"error": str(e)}, 500
         
