@@ -148,37 +148,53 @@ def messages():
 # -----------------------------
 # Streaming pull
 # -----------------------------
+# -----------------------------
+# Streaming pull (thread-safe + restart loop)
+# -----------------------------
 def start_streaming_pull():
     global SUBSCRIBER, SUB_FUTURE
-    try:
-        SUBSCRIBER = pubsub_v1.SubscriberClient()
-        sub_path = SUBSCRIBER.subscription_path(PROJECT_ID, SUB_PULL_ID)
-        print(f"[PULL] starting streaming pull on {sub_path}", flush=True)
 
-        # Verify subscription exists and see its linkage/filter
-        try:
-            sub_info = SUBSCRIBER.get_subscription(request={"subscription": sub_path})
-            print(f"[PULL] Verified subscription; topic={sub_info.topic} filter={getattr(sub_info, 'filter', '')}", flush=True)
-        except NotFound:
-            print(f"[PULL] SUBSCRIPTION NOT FOUND: {sub_path}", flush=True)
-
-        def callback(message: pubsub_v1.subscriber.message.Message):
+    def run_pull():
+        global SUBSCRIBER, SUB_FUTURE
+        while True:
             try:
-                data = message.data.decode("utf-8")
-                item = {
-                    "data": data,
-                    "attributes": dict(message.attributes or {}),
-                    "messageId": message.message_id,
-                    "publishTime": str(message.publish_time),
-                }
-                RECENT.append(item)
-                print(f"[PULL] got message: {item}", flush=True)
-                message.ack()
-            except Exception as e:
-                print(f"[PULL] callback error: {e!r}", flush=True)
-                message.nack()
+                SUBSCRIBER = pubsub_v1.SubscriberClient()
+                sub_path = SUBSCRIBER.subscription_path(PROJECT_ID, SUB_PULL_ID)
+                print(f"[PULL] Connecting to {sub_path}", flush=True)
 
-        SUB_FUTURE = SUBSCRIBER.subscribe(sub_path, callback=callback)
+                try:
+                    sub_info = SUBSCRIBER.get_subscription(request={"subscription": sub_path})
+                    print(f"[PULL] Verified subscription; topic={sub_info.topic}", flush=True)
+                except NotFound:
+                    print(f"[PULL] SUB NOT FOUND: {sub_path}", flush=True)
+
+                def callback(message):
+                    try:
+                        data = message.data.decode("utf-8")
+                        item = {
+                            "data": data,
+                            "attributes": dict(message.attributes or {}),
+                            "messageId": message.message_id,
+                            "publishTime": str(message.publish_time),
+                        }
+                        with RECENT_LOCK:
+                            RECENT.append(item)
+
+                        print(f"[PULL] ✅ {item}", flush=True)
+                        message.ack()
+                    except Exception as e:
+                        print(f"[PULL] ❌ callback error: {e}", flush=True)
+                        message.nack()
+
+                SUB_FUTURE = SUBSCRIBER.subscribe(sub_path, callback=callback)
+                print("[PULL] Listening...", flush=True)
+                SUB_FUTURE.result()
+            except Exception as e:
+                print(f"[PULL] ⚠️ Stream error, restarting: {e}", flush=True)
+                time.sleep(2)
+
+    threading.Thread(target=run_pull, daemon=True).start()
+
 
         def _watch():
             try:
