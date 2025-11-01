@@ -203,16 +203,15 @@ def debug_subscription():
 
 @app.route("/_debug/iam")
 def debug_iam():
-    from flask import jsonify
-    from google.cloud import pubsub_v1
-    sc = pubsub_v1.SubscriberClient()
-    sub_path = sc.subscription_path(PROJECT_ID, SUB_PULL_ID)
-    perms = ["pubsub.subscriptions.consume", "pubsub.subscriptions.pull"]
+    perms = ["pubsub.subscriptions.consume", "pubsub.subscriptions.get"]
+    resource = f"projects/{PROJECT_ID}/subscriptions/{SUB_PULL_ID}"
     try:
-        resp = sc.test_iam_permissions(request={"resource": sub_path, "permissions": perms})
-        return jsonify({"resource": sub_path, "granted": resp.permissions}), 200
+        sub = pubsub_v1.SubscriberClient(credentials=CREDS)
+        resp = sub.test_iam_permissions(request={"resource": resource, "permissions": perms})
+        return {"resource": resource, "asked": perms, "granted": list(resp.permissions)}, 200
     except Exception as e:
-        return jsonify({"error": str(e), "resource": sub_path}), 500
+        return {"resource": resource, "asked": perms, "error": str(e)}, 500
+
 
 
 # -----------------------------
