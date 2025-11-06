@@ -10,9 +10,9 @@ from google.oauth2 import service_account
 # -----------------------------
 # Config via env
 # -----------------------------
-PROJECT_ID = os.environ.get("GCP_PROJECT_ID", "").strip()
-TOPIC_ID = os.environ.get("PUBSUB_TOPIC", "app-messages").strip()
-SUB_PULL_ID = os.environ.get("PUBSUB_SUBSCRIPTION_PULL", "app-sub-pull-test").strip()
+PROJECT_ID = os.environ.get("PROJECT_ID", "").strip()
+TOPIC_ID = os.environ.get("TOPIC_ID", "app-messages").strip()
+SUB_PULL_ID = os.environ.get("SUB_PULL_ID", "app-sub-pull-test").strip()
 USE_SYNC_POLL = os.environ.get("USE_SYNC_POLL", "0") == "1"
 _LAST_PULL_AT = 0 
 CREDS_PATH = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
