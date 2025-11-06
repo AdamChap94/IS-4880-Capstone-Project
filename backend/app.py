@@ -221,7 +221,7 @@ def messages():
         out = list(RECENT)[::-1]
     return jsonify(out), 200
 
-@app.before_first_request
+@app.before_request
 def _start_bg_threads():
     """Kick off exactly one background subscriber in the worker process.
     Using before_first_request guarantees we start after gunicorn forks,
