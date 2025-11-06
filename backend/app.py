@@ -223,19 +223,19 @@ def messages():
 
 @app.before_request
 def _start_bg_threads():
-    """Kick off exactly one background subscriber in the worker process.
-    Using before_first_request guarantees we start after gunicorn forks,
-    so the poll thread shares memory with the request handler (same RECENT deque).
-    """
-    global SYNC_THREAD_STARTED, STREAM_THREAD_STARTED
-    if USE_SYNC_POLL:
-        if not SYNC_THREAD_STARTED:
-            print("[BOOT] starting sync poll inside worker (before_first_request)", flush=True)
-            start_sync_poll()
-    else:
-        if not STREAM_THREAD_STARTED:
-            print("[BOOT] starting streaming pull inside worker (before_first_request)", flush=True)
-            start_streaming_pull()
+     app = current_app
+    # Avoid starting multiple threads in the same worker
+   if not app.config.get("SYNC_POLL_STARTED", False):
+       threading.Thread(
+            target=start_sync_poll_loop,
+            name="sync-poll",
+           daemon=True,
+        ).start()
+        app.config["SYNC_POLL_STARTED"] = True
+
+# Temporary backward-compat alias (remove once all callers are updated)
+def start_sync_poll():
+    return start_sync_poll_loop()
 
  # Handy: see which PID is serving you (helps confirm single-process RECENT)
 @app.route("/_debug/pid")
