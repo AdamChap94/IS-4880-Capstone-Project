@@ -5,22 +5,23 @@ const API_BASE = import.meta.env.VITE_API_BASE; // set on Render
 export default function App() {
   const [view, setView] = useState("send"); // "send" or "receive"
 
+  // KSU / MA colors
+  const brandBlue = "#003366";
+  const brandGold = "#FFC72C";
+
   return (
     <div style={{ minHeight: "100vh", background: "#f5f5f5" }}>
       <header
         style={{
-          background: "#0f172a",
+          background: brandBlue,
           color: "#fff",
           padding: "16px 24px",
           marginBottom: 16,
+          borderBottom: `4px solid ${brandGold}`,
         }}
       >
-        <h1 style={{ margin: 0, fontSize: 20 }}>
-         Group 5 Messaging Provider 
-        </h1>
-        <p style={{ margin: 0, fontSize: 12 }}>
-          Publisher and Consumer pages
-        </p>
+        <h1 style={{ margin: 0, fontSize: 20 }}>Group 5 Messaging Provider</h1>
+        <p style={{ margin: 0, fontSize: 12 }}>Publisher and Consumer pages</p>
       </header>
 
       <div style={{ maxWidth: 900, margin: "0 auto", padding: "0 16px 48px" }}>
@@ -30,7 +31,7 @@ export default function App() {
             onClick={() => setView("send")}
             style={{
               padding: "8px 16px",
-              background: view === "send" ? "#1d4ed8" : "#e2e8f0",
+              background: view === "send" ? brandBlue : "#e2e8f0",
               color: view === "send" ? "#fff" : "#000",
               border: "none",
               borderRadius: 6,
@@ -43,7 +44,7 @@ export default function App() {
             onClick={() => setView("receive")}
             style={{
               padding: "8px 16px",
-              background: view === "receive" ? "#1d4ed8" : "#e2e8f0",
+              background: view === "receive" ? brandBlue : "#e2e8f0",
               color: view === "receive" ? "#fff" : "#000",
               border: "none",
               borderRadius: 6,
@@ -54,13 +55,13 @@ export default function App() {
           </button>
         </div>
 
-        {view === "send" ? <SenderPage /> : <ReceiverPage />}
+        {view === "send" ? <SenderPage brandBlue={brandBlue} brandGold={brandGold} /> : <ReceiverPage />}
       </div>
     </div>
   );
 }
 
-function SenderPage() {
+function SenderPage({ brandBlue, brandGold }) {
   const [message, setMessage] = useState("");
   const [messageId, setMessageId] = useState("");
   const [source, setSource] = useState("ui");
@@ -81,7 +82,6 @@ function SenderPage() {
           source: source || "ui",
         },
       };
-      // If user provided a messageId, send it in attributes since your duplicate logic is likely in backend/DB
       if (messageId.trim()) {
         body.attributes.messageId = messageId.trim();
       }
@@ -98,8 +98,6 @@ function SenderPage() {
       } else {
         setFeedback("Message published.");
         setMessage("");
-        // keep messageId if you want to reuse it, or clear it:
-        // setMessageId("");
       }
     } catch (err) {
       setFeedback("Network error while publishing.");
@@ -117,9 +115,18 @@ function SenderPage() {
         boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
       }}
     >
-      <h2 style={{ marginTop: 0 }}>Sender page</h2>
+      <h2
+        style={{
+          marginTop: 0,
+          color: brandBlue,
+          borderBottom: `2px solid ${brandGold}`,
+          paddingBottom: 4,
+        }}
+      >
+        Sender page
+      </h2>
       <p style={{ color: "#475569", fontSize: 14 }}>
-       This page is for publishing messages to Pub/Sub topic through the backend.
+        This page is for publishing messages to the Pub/Sub topic through the backend.
       </p>
 
       <label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
@@ -178,7 +185,7 @@ function SenderPage() {
         onClick={send}
         disabled={loading}
         style={{
-          background: "#1d4ed8",
+          background: brandBlue,
           color: "#fff",
           border: "none",
           padding: "8px 16px",
@@ -190,9 +197,7 @@ function SenderPage() {
       </button>
 
       {feedback ? (
-        <p style={{ marginTop: 12, fontSize: 13, color: "#0f172a" }}>
-          {feedback}
-        </p>
+        <p style={{ marginTop: 12, fontSize: 13, color: "#0f172a" }}>{feedback}</p>
       ) : null}
     </div>
   );
@@ -202,12 +207,24 @@ function ReceiverPage() {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // filters mentioned in transcript and project doc
+  // pagination
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(10);
+  const [total, setTotal] = useState(0);
+
+  // auto refresh
+  const [autoRefresh, setAutoRefresh] = useState(true);
+
+  // filters
   const [filterMessageId, setFilterMessageId] = useState("");
   const [filterSource, setFilterSource] = useState("");
   const [filterStart, setFilterStart] = useState("");
   const [filterEnd, setFilterEnd] = useState("");
   const [filterDuplicate, setFilterDuplicate] = useState("");
+
+  const brandBlue = "#003366";
+  const brandGold = "#FFC72C";
+  const lightGray = "#F3F4F6";
 
   const buildQuery = () => {
     const params = new URLSearchParams();
@@ -216,8 +233,9 @@ function ReceiverPage() {
     if (filterStart.trim()) params.append("start", filterStart.trim());
     if (filterEnd.trim()) params.append("end", filterEnd.trim());
     if (filterDuplicate) params.append("is_duplicate", filterDuplicate);
-    const qs = params.toString();
-    return qs ? `?${qs}` : "";
+    params.append("page", page);
+    params.append("limit", pageSize);
+    return `?${params.toString()}`;
   };
 
   const load = async () => {
@@ -226,20 +244,33 @@ function ReceiverPage() {
       const qs = buildQuery();
       const res = await fetch(`${API_BASE}/messages${qs}`);
       const data = await res.json();
-      // Expecting array of messages from backend
-      setMessages(Array.isArray(data) ? data : []);
+
+      // if backend returns { data: [...], total: n }
+      if (data && Array.isArray(data.data)) {
+        setMessages(data.data);
+        setTotal(data.total || data.data.length);
+      } else {
+        // fallback to array
+        const arr = Array.isArray(data) ? data : [];
+        setMessages(arr);
+        setTotal(arr.length);
+      }
     } catch (err) {
       setMessages([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
   };
 
+  // initial load and auto refresh
   useEffect(() => {
-    // initial load
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (autoRefresh) {
+      const id = setInterval(load, 10000);
+      return () => clearInterval(id);
+    }
+  }, [page, autoRefresh]); // reload when page changes or toggle changes
 
   return (
     <div
@@ -250,7 +281,16 @@ function ReceiverPage() {
         boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
       }}
     >
-      <h2 style={{ marginTop: 0 }}>Receiver page</h2>
+      <h2
+        style={{
+          marginTop: 0,
+          color: brandBlue,
+          borderBottom: `2px solid ${brandGold}`,
+          paddingBottom: 4,
+        }}
+      >
+        Receiver page
+      </h2>
       <p style={{ color: "#475569", fontSize: 14, marginBottom: 16 }}>
         View messages stored in the database. Use filters to search by attributes.
       </p>
@@ -324,11 +364,14 @@ function ReceiverPage() {
         </div>
       </div>
 
-      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+      <div style={{ display: "flex", gap: 8, marginBottom: 16, alignItems: "center" }}>
         <button
-          onClick={load}
+          onClick={() => {
+            setPage(1);
+            load();
+          }}
           style={{
-            background: "#1d4ed8",
+            background: brandBlue,
             color: "#fff",
             border: "none",
             padding: "6px 14px",
@@ -345,8 +388,8 @@ function ReceiverPage() {
             setFilterStart("");
             setFilterEnd("");
             setFilterDuplicate("");
-            // reload all
-            setTimeout(() => load(), 0);
+            setPage(1);
+            load();
           }}
           style={{
             background: "#e2e8f0",
@@ -358,6 +401,15 @@ function ReceiverPage() {
         >
           Clear
         </button>
+        <label style={{ marginLeft: "auto", fontSize: 13, color: brandBlue }}>
+          <input
+            type="checkbox"
+            checked={autoRefresh}
+            onChange={(e) => setAutoRefresh(e.target.checked)}
+            style={{ marginRight: 6 }}
+          />
+          Auto refresh
+        </label>
       </div>
 
       {/* Messages table */}
@@ -375,7 +427,7 @@ function ReceiverPage() {
             }}
           >
             <thead>
-              <tr style={{ background: "#e2e8f0" }}>
+              <tr style={{ background: brandBlue, color: "#fff" }}>
                 <th style={thStyle}>Message ID</th>
                 <th style={thStyle}>Data</th>
                 <th style={thStyle}>Source</th>
@@ -391,9 +443,9 @@ function ReceiverPage() {
                   m.isDuplicate === true;
                 return (
                   <tr
-                    key={m.messageId || idx}
+                    key={m.messageId || m.id || idx}
                     style={{
-                      background: idx % 2 === 0 ? "#fff" : "#f8fafc",
+                      background: idx % 2 === 0 ? "#fff" : lightGray,
                     }}
                   >
                     <td style={tdStyle}>{m.messageId || m.id || "N/A"}</td>
@@ -406,7 +458,13 @@ function ReceiverPage() {
                         ""}
                     </td>
                     <td style={tdStyle}>{m.publishTime || m.created_at || ""}</td>
-                    <td style={{ ...tdStyle, fontWeight: isDup ? 700 : 400, color: isDup ? "#b91c1c" : "#0f172a" }}>
+                    <td
+                      style={{
+                        ...tdStyle,
+                        fontWeight: isDup ? 700 : 400,
+                        color: isDup ? "#b91c1c" : brandBlue,
+                      }}
+                    >
                       {isDup ? "True" : "False"}
                     </td>
                   </tr>
@@ -414,6 +472,53 @@ function ReceiverPage() {
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {total > pageSize && (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            marginTop: 16,
+            gap: 8,
+            alignItems: "center",
+          }}
+        >
+          <button
+            disabled={page === 1}
+            onClick={() => setPage(page - 1)}
+            style={{
+              background: brandBlue,
+              color: "#fff",
+              border: "none",
+              borderRadius: 6,
+              padding: "6px 12px",
+              cursor: "pointer",
+              opacity: page === 1 ? 0.4 : 1,
+            }}
+          >
+            Prev
+          </button>
+          <span style={{ fontSize: 13 }}>
+            Page {page} of {Math.ceil(total / pageSize) || 1}
+          </span>
+          <button
+            disabled={page >= Math.ceil(total / pageSize)}
+            onClick={() => setPage(page + 1)}
+            style={{
+              background: brandBlue,
+              color: "#fff",
+              border: "none",
+              borderRadius: 6,
+              padding: "6px 12px",
+              cursor: "pointer",
+              opacity: page >= Math.ceil(total / pageSize) ? 0.4 : 1,
+            }}
+          >
+            Next
+          </button>
         </div>
       )}
     </div>
