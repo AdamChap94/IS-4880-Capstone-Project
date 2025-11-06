@@ -221,21 +221,31 @@ def messages():
         out = list(RECENT)[::-1]
     return jsonify(out), 200
 
-@app.before_request
+# --- background poll launcher (ensures thread only starts once) ---
+from flask import current_app
+import threading
+
 def _start_bg_threads():
-     app = current_app
-    # Avoid starting multiple threads in the same worker
+    app = current_app
+    # Prevent multiple threads if Flask reloads workers
     if not app.config.get("SYNC_POLL_STARTED", False):
-       threading.Thread(
-            target=start_sync_poll_loop,
+        t = threading.Thread(
+            target=start_sync_poll_loop,  # your function that loops pulling Pub/Sub
             name="sync-poll",
-           daemon=True,
-        ).start()
+            daemon=True
+        )
+        t.start()
         app.config["SYNC_POLL_STARTED"] = True
 
-# Temporary backward-compat alias (remove once all callers are updated)
+# Temporary alias for legacy call names (safe)
 def start_sync_poll():
     return start_sync_poll_loop()
+
+# Register hook (Flask 2.0 doesn't have before_first_request for async workers)
+@app.before_request
+def _ensure_thread():
+    _start_bg_threads()
+
 
  # Handy: see which PID is serving you (helps confirm single-process RECENT)
 @app.route("/_debug/pid")
