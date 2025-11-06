@@ -225,7 +225,7 @@ def messages():
 def _start_bg_threads():
      app = current_app
     # Avoid starting multiple threads in the same worker
-   if not app.config.get("SYNC_POLL_STARTED", False):
+        if not app.config.get("SYNC_POLL_STARTED", False):
        threading.Thread(
             target=start_sync_poll_loop,
             name="sync-poll",
