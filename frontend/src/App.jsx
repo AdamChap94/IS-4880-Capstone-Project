@@ -119,7 +119,7 @@ function SenderPage() {
     >
       <h2 style={{ marginTop: 0 }}>Sender page</h2>
       <p style={{ color: "#475569", fontSize: 14 }}>
-        Use this page to publish a message to your Pub/Sub topic through the backend.
+       This page is publishing messages to Pub/Sub topic through the backend.
       </p>
 
       <label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
@@ -252,7 +252,7 @@ function ReceiverPage() {
     >
       <h2 style={{ marginTop: 0 }}>Receiver page</h2>
       <p style={{ color: "#475569", fontSize: 14, marginBottom: 16 }}>
-        View messages stored in the database. Use filters to search by attributes as Adam requested.
+        View messages stored in the database. Use filters to search by attributes.
       </p>
 
       {/* Filters */}
@@ -317,7 +317,7 @@ function ReceiverPage() {
             onChange={(e) => setFilterDuplicate(e.target.value)}
             style={{ width: "100%", padding: 6, borderRadius: 6, border: "1px solid #cbd5f5" }}
           >
-            <option value="">Any</option>
+            <option value="">T/F</option>
             <option value="true">True</option>
             <option value="false">False</option>
           </select>
