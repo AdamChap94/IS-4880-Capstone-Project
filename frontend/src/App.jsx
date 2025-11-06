@@ -16,10 +16,10 @@ export default function App() {
         }}
       >
         <h1 style={{ margin: 0, fontSize: 20 }}>
-          Cloud Messaging Provider - UI
+         Group 5 Messaging Provider 
         </h1>
         <p style={{ margin: 0, fontSize: 12 }}>
-          Project 1 - Publisher and Consumer pages
+          Publisher and Consumer pages
         </p>
       </header>
 
