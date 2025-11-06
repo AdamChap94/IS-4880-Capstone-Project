@@ -119,7 +119,7 @@ function SenderPage() {
     >
       <h2 style={{ marginTop: 0 }}>Sender page</h2>
       <p style={{ color: "#475569", fontSize: 14 }}>
-       This page is publishing messages to Pub/Sub topic through the backend.
+       This page is for publishing messages to Pub/Sub topic through the backend.
       </p>
 
       <label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
