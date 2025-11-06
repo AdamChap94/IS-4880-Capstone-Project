@@ -221,25 +221,31 @@ def messages():
         out = list(RECENT)[::-1]
     return jsonify(out), 200
 
-# Start the Pub/Sub puller only after Gunicorn worker is fully serving.
-@app.before_serving
-def _start_sync_thread_once():
-    global SYNC_THREAD_STARTED
-    if not SYNC_THREAD_STARTED:
-        print("[SYNC] starting from before_serving", flush=True)
-        # 🔽 Call YOUR existing puller here:
-        # If your file has start_sync_poll(), call that:
-        try:
+@app.before_first_request
+def _start_bg_threads():
+    """Kick off exactly one background subscriber in the worker process.
+    Using before_first_request guarantees we start after gunicorn forks,
+    so the poll thread shares memory with the request handler (same RECENT deque).
+    """
+    global SYNC_THREAD_STARTED, STREAM_THREAD_STARTED
+    if USE_SYNC_POLL:
+        if not SYNC_THREAD_STARTED:
+            print("[BOOT] starting sync poll inside worker (before_first_request)", flush=True)
             start_sync_poll()
-        except NameError:
-            # Fallback if your function is named differently:
-            try:
-                start_streaming_pull()
-            except NameError:
-                # LAST resort: look for a function you have that starts the Subscriber thread
-                # e.g., start_poll_loop() or start_poll_thread()
-                start_poll_loop()  # change this to the actual name if needed
-        SYNC_THREAD_STARTED = True
+    else:
+        if not STREAM_THREAD_STARTED:
+            print("[BOOT] starting streaming pull inside worker (before_first_request)", flush=True)
+            start_streaming_pull()
+
+ # Handy: see which PID is serving you (helps confirm single-process RECENT)
+@app.route("/_debug/pid")
+def debug_pid():
+    return jsonify({
+        "pid": os.getpid(),
+        "recent_len": len(RECENT),
+        "use_sync_poll": USE_SYNC_POLL,
+    }), 200
+       
 
 
 def debug_subscription():
@@ -389,11 +395,7 @@ def start_streaming_pull():
 
 
 
-# Kick off the pull worker (run with Gunicorn --workers=1 while debugging)
-if USE_SYNC_POLL:
-    start_sync_poll_loop()
-else:
-    start_streaming_pull()
+
 
 
 # Local dev only
