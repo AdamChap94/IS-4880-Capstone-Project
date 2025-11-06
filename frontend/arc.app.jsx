@@ -32,7 +32,7 @@ export default function App() {
   useEffect(() => { load(); }, []);
 
   return (
-    <div style={{ padding: 24, maxWidth: 820, margin: "0 auto" }}>
+    <div style={{ padding: 24, maxWidth: 720, margin: "0 auto" }}>
       <h1>Pub/Sub Messaging UI</h1>
       <div style={{ display: "flex", gap: 12 }}>
         <input
@@ -54,4 +54,5 @@ export default function App() {
     </div>
   );
 }
+
 
