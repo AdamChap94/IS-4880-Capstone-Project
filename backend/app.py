@@ -68,7 +68,7 @@ def die(msg: str):
     raise RuntimeError(msg)
 
 if not PROJECT_ID:
-    die("GCP_PROJECT_ID is missing. Set it in Render backend Environment.")
+    die("PROJECT_ID is missing. Set it in Render backend Environment.")
 
 print(f"[BOOT] PROJECT_ID={PROJECT_ID} TOPIC_ID={TOPIC_ID} SUB_PULL_ID={SUB_PULL_ID}", flush=True)
 print(f"[BOOT] GOOGLE_APPLICATION_CREDENTIALS={os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')}", flush=True)
