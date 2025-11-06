@@ -101,6 +101,9 @@ except Exception as e:
 # In-memory ring buffer for UI (POC-friendly)
 RECENT = collections.deque(maxlen=200)
 RECENT_LOCK = threading.Lock()
+# --- Puller thread guards ---
+SYNC_THREAD_STARTED = False
+
 
 # Keep globals so they don't get GC'd
 SUBSCRIBER = pubsub_v1.SubscriberClient(credentials=CREDS)
@@ -217,6 +220,26 @@ def messages():
     with RECENT_LOCK:
         out = list(RECENT)[::-1]
     return jsonify(out), 200
+
+# Start the Pub/Sub puller only after Gunicorn worker is fully serving.
+@app.before_serving
+def _start_sync_thread_once():
+    global SYNC_THREAD_STARTED
+    if not SYNC_THREAD_STARTED:
+        print("[SYNC] starting from before_serving", flush=True)
+        # 🔽 Call YOUR existing puller here:
+        # If your file has start_sync_poll(), call that:
+        try:
+            start_sync_poll()
+        except NameError:
+            # Fallback if your function is named differently:
+            try:
+                start_streaming_pull()
+            except NameError:
+                # LAST resort: look for a function you have that starts the Subscriber thread
+                # e.g., start_poll_loop() or start_poll_thread()
+                start_poll_loop()  # change this to the actual name if needed
+        SYNC_THREAD_STARTED = True
 
 
 def debug_subscription():
