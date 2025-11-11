@@ -56,6 +56,36 @@ export default function App() {
 }
 
 
+import { useState } from "react";
+import MessageComposer from "./MessageComposer.jsx";
+import MessageRow from "./MessageRow.jsx";
+
+export default function App() {
+  const [messages, setMessages] = useState([]);
+
+  return (
+    <div className="container">
+      <h1>Group 5 Pub/Sub</h1>
+
+      <MessageComposer
+        onMessage={(m) => setMessages((prev) => [m, ...prev])}
+      />
+
+      <div className="list">
+        {messages.map((m, i) => (
+          <MessageRow key={i} text={m.text} flagged={m.flagged} />
+        ))}
+      </div>
+
+      <style>{`
+        .container{max-width:720px;margin:0 auto;padding:1rem}
+        h1{font-size:1.25rem;margin:0 0 .75rem}
+        .list{margin-top:1rem}
+      `}</style>
+    </div>
+  );
+}
+
 
 
 
