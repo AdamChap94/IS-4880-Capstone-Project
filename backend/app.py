@@ -405,6 +405,53 @@ def start_streaming_pull():
 
 
 
+# app/profanity.py (same as before)
+from better_profanity import profanity
+import regex as re, unicodedata as ud, os
+
+profanity.load_censor_words()
+extra = [w.strip() for w in os.getenv("PROFANITY_EXTRA_WORDS","").split(",") if w.strip()]
+white = [w.strip() for w in os.getenv("PROFANITY_WHITELIST","").split(",") if w.strip()]
+if extra: profanity.add_censor_words(extra)
+for w in white: profanity.remove_word(w)
+
+def _norm(t: str) -> str:
+    t = ud.normalize("NFKC", t)
+    t = re.sub(r"[@4]", "a", t, flags=re.I)
+    t = re.sub(r"[!1]", "i", t, flags=re.I)
+    t = re.sub(r"[$5]", "s", t, flags=re.I)
+    t = re.sub(r"(.)\1{2,}", r"\1\1", t)
+    return t
+
+def contains_bad(t: str) -> bool:
+    return profanity.contains_profanity(_norm(t))
+
+def mask(t: str) -> str:
+    # Masks only profane tokens, leaving everything else intact
+    return profanity.censor(_norm(t), censor_char="*")
+
+# app/routes.py (publish endpoint)
+from flask import Blueprint, request, jsonify
+from .profanity import contains_bad, mask
+
+bp = Blueprint("api", __name__)
+
+@bp.post("/api/messages")
+def publish():
+    data = request.get_json(force=True) or {}
+    raw_text = (data.get("data") or "").strip()
+
+    flagged = contains_bad(raw_text)
+    stored_text = mask(raw_text) if flagged else raw_text
+
+    # persist masked text + flag
+    # db.save_message(data=stored_text, is_flagged=flagged, ...)
+    return jsonify({
+        "ok": True,
+        "flagged": flagged,
+        "data": stored_text
+    }), 200
+
 
 
 
