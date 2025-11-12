@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 
-const API_BASE = import.meta.env.VITE_API_BASE; // set on Render
+const API_BASE = import.meta.env.VITE_API_BASE; 
 
 export default function App() {
-  const [view, setView] = useState("send"); // "send" or "receive"
+  const [view, setView] = useState("send"); 
 
-  // KSU / MA colors
+
   const brandBlue = "#003366";
   const brandGold = "#FFC72C";
 
@@ -141,7 +141,7 @@ function SenderPage({ brandBlue, brandGold }) {
           border: "1px solid #cbd5f5",
           marginBottom: 12,
         }}
-        placeholder='Type a message. You can paste JSON here like {"name":"test"}'
+        placeholder='Type a message.'
         value={message}
         onChange={(e) => setMessage(e.target.value)}
       />
@@ -160,7 +160,7 @@ function SenderPage({ brandBlue, brandGold }) {
             }}
             value={messageId}
             onChange={(e) => setMessageId(e.target.value)}
-            placeholder="e.g. msg-001"
+            placeholder=""
           />
         </div>
         <div style={{ width: 160 }}>
@@ -245,12 +245,12 @@ function ReceiverPage() {
       const res = await fetch(`${API_BASE}/messages${qs}`);
       const data = await res.json();
 
-      // if backend returns { data: [...], total: n }
+    
       if (data && Array.isArray(data.data)) {
         setMessages(data.data);
         setTotal(data.total || data.data.length);
       } else {
-        // fallback to array
+        
         const arr = Array.isArray(data) ? data : [];
         setMessages(arr);
         setTotal(arr.length);
@@ -312,7 +312,7 @@ function ReceiverPage() {
             value={filterMessageId}
             onChange={(e) => setFilterMessageId(e.target.value)}
             style={{ width: "100%", padding: 6, borderRadius: 6, border: "1px solid #cbd5f5" }}
-            placeholder="msg-001"
+            placeholder=""
           />
         </div>
         <div>
