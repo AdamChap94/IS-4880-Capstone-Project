@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 
-const API_BASE = import.meta.env.VITE_API_BASE; 
+const API_BASE = import.meta.env.VITE_API_BASE; // set on Render
 
 export default function App() {
-  const [view, setView] = useState("send"); 
+  const [view, setView] = useState("send"); // "send" or "receive"
 
   // KSU / MA colors
   const brandBlue = "#003366";
@@ -55,11 +55,7 @@ export default function App() {
           </button>
         </div>
 
-        {view === "send" ? (
-          <SenderPage brandBlue={brandBlue} brandGold={brandGold} />
-        ) : (
-          <ReceiverPage />
-        )}
+        {view === "send" ? <SenderPage brandBlue={brandBlue} brandGold={brandGold} /> : <ReceiverPage />}
       </div>
     </div>
   );
@@ -80,18 +76,14 @@ function SenderPage({ brandBlue, brandGold }) {
     setLoading(true);
     setFeedback("");
     try {
-      const trimmedId = messageId.trim();
-
       const body = {
-        messageId: trimmedId ? trimmedId : undefined,
         message,
         attributes: {
           source: source || "ui",
         },
       };
-
-      if (trimmedId) {
-        body.attributes.messageId = trimmedId;
+      if (messageId.trim()) {
+        body.attributes.messageId = messageId.trim();
       }
 
       const res = await fetch(`${API_BASE}/publish`, {
@@ -106,7 +98,6 @@ function SenderPage({ brandBlue, brandGold }) {
       } else {
         setFeedback("Message published.");
         setMessage("");
-       
       }
     } catch (err) {
       setFeedback("Network error while publishing.");
@@ -235,108 +226,51 @@ function ReceiverPage() {
   const brandGold = "#FFC72C";
   const lightGray = "#F3F4F6";
 
- 
   const buildQuery = () => {
     const params = new URLSearchParams();
-
-    if (filterMessageId.trim()) {
-      params.append("messageId", filterMessageId.trim());
-      params.append("message_id", filterMessageId.trim());
-    }
-    if (filterSource.trim()) {
-      params.append("source", filterSource.trim());
-      params.append("Source", filterSource.trim());
-    }
-    if (filterStart.trim()) {
-      params.append("start", filterStart.trim());
-      params.append("start_time", filterStart.trim());
-    }
-    if (filterEnd.trim()) {
-      params.append("end", filterEnd.trim());
-      params.append("end_time", filterEnd.trim());
-    }
-    if (filterDuplicate) {
-      params.append("is_duplicate", filterDuplicate);
-      params.append("duplicate", filterDuplicate);
-    }
-
+    if (filterMessageId.trim()) params.append("messageId", filterMessageId.trim());
+    if (filterSource.trim()) params.append("source", filterSource.trim());
+    if (filterStart.trim()) params.append("start", filterStart.trim());
+    if (filterEnd.trim()) params.append("end", filterEnd.trim());
+    if (filterDuplicate) params.append("is_duplicate", filterDuplicate);
     params.append("page", page);
     params.append("limit", pageSize);
-
-    const qs = params.toString();
-    return qs ? `?${qs}` : "";
+    return `?${params.toString()}`;
   };
 
-const send = async () => {
-  if (!message.trim()) {
-    setFeedback("Message cannot be empty.");
-    return;
-  }
-  setLoading(true);
-  setFeedback("");
-  try {
-    const trimmedId = messageId.trim();
+  const load = async () => {
+    setLoading(true);
+    try {
+      const qs = buildQuery();
+      const res = await fetch(`${API_BASE}/messages${qs}`);
+      const data = await res.json();
 
-    const body = {
-      messageId: trimmedId ? trimmedId : undefined, // top-level
-      message,
-      attributes: {
-        source: source || "ui",
-      },
-    };
-    if (trimmedId) {
-      body.attributes.messageId = trimmedId; // also in attributes
+      // if backend returns { data: [...], total: n }
+      if (data && Array.isArray(data.data)) {
+        setMessages(data.data);
+        setTotal(data.total || data.data.length);
+      } else {
+        // fallback to array
+        const arr = Array.isArray(data) ? data : [];
+        setMessages(arr);
+        setTotal(arr.length);
+      }
+    } catch (err) {
+      setMessages([]);
+      setTotal(0);
+    } finally {
+      setLoading(false);
     }
+  };
 
-    // try /publish first
-    let res = await fetch(`${API_BASE}/publish`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-
-    // if /publish doesn't exist, try /api/publish
-    if (!res.ok) {
-      const alt = await fetch(`${API_BASE}/api/publish`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      res = alt;
-    }
-
-    if (!res.ok) {
-      // try to read text so we see the real backend error
-      const errText = await res.text();
-      setFeedback(`Publish failed: ${errText || res.status}`);
-    } else {
-      setFeedback("Message published.");
-      setMessage("");
-    }
-  } catch (err) {
-    // this is where "network error" was coming from
-    setFeedback(
-      "Network error while publishing. Check VITE_API_BASE in Render and that the backend URL is reachable."
-    );
-  } finally {
-    setLoading(false);
-  }
-};
-
- 
+  // initial load and auto refresh
   useEffect(() => {
     load();
-
-  }, [page, filterMessageId, filterSource, filterStart, filterEnd, filterDuplicate]);
-
- 
-  useEffect(() => {
-    if (!autoRefresh) return;
-    const id = setInterval(() => {
-      load();
-    }, 10000);
-    return () => clearInterval(id);
-  }, [autoRefresh, page, filterMessageId, filterSource, filterStart, filterEnd, filterDuplicate]);
+    if (autoRefresh) {
+      const id = setInterval(load, 10000);
+      return () => clearInterval(id);
+    }
+  }, [page, autoRefresh]); // reload when page changes or toggle changes
 
   return (
     <div
@@ -376,10 +310,7 @@ const send = async () => {
           </label>
           <input
             value={filterMessageId}
-            onChange={(e) => {
-              setPage(1);
-              setFilterMessageId(e.target.value);
-            }}
+            onChange={(e) => setFilterMessageId(e.target.value)}
             style={{ width: "100%", padding: 6, borderRadius: 6, border: "1px solid #cbd5f5" }}
             placeholder="msg-001"
           />
@@ -390,10 +321,7 @@ const send = async () => {
           </label>
           <input
             value={filterSource}
-            onChange={(e) => {
-              setPage(1);
-              setFilterSource(e.target.value);
-            }}
+            onChange={(e) => setFilterSource(e.target.value)}
             style={{ width: "100%", padding: 6, borderRadius: 6, border: "1px solid #cbd5f5" }}
             placeholder="ui"
           />
@@ -405,10 +333,7 @@ const send = async () => {
           <input
             type="datetime-local"
             value={filterStart}
-            onChange={(e) => {
-              setPage(1);
-              setFilterStart(e.target.value);
-            }}
+            onChange={(e) => setFilterStart(e.target.value)}
             style={{ width: "100%", padding: 6, borderRadius: 6, border: "1px solid #cbd5f5" }}
           />
         </div>
@@ -419,10 +344,7 @@ const send = async () => {
           <input
             type="datetime-local"
             value={filterEnd}
-            onChange={(e) => {
-              setPage(1);
-              setFilterEnd(e.target.value);
-            }}
+            onChange={(e) => setFilterEnd(e.target.value)}
             style={{ width: "100%", padding: 6, borderRadius: 6, border: "1px solid #cbd5f5" }}
           />
         </div>
@@ -432,10 +354,7 @@ const send = async () => {
           </label>
           <select
             value={filterDuplicate}
-            onChange={(e) => {
-              setPage(1);
-              setFilterDuplicate(e.target.value);
-            }}
+            onChange={(e) => setFilterDuplicate(e.target.value)}
             style={{ width: "100%", padding: 6, borderRadius: 6, border: "1px solid #cbd5f5" }}
           >
             <option value="">T/F</option>
@@ -470,7 +389,7 @@ const send = async () => {
             setFilterEnd("");
             setFilterDuplicate("");
             setPage(1);
-            setTimeout(() => load(), 0);
+            load();
           }}
           style={{
             background: "#e2e8f0",
@@ -519,11 +438,9 @@ const send = async () => {
             <tbody>
               {messages.map((m, idx) => {
                 const isDup =
-                  m?.is_duplicate === true ||
-                  m?.is_duplicate === "true" ||
-                  m?.isDuplicate === true;
-                const attrs = m?.attributes || {};
-                const src = attrs.source || attrs.Source || m?.source || "";
+                  m.is_duplicate === true ||
+                  m.is_duplicate === "true" ||
+                  m.isDuplicate === true;
                 return (
                   <tr
                     key={m.messageId || m.id || idx}
@@ -535,7 +452,11 @@ const send = async () => {
                     <td style={{ ...tdStyle, maxWidth: 260, wordBreak: "break-word" }}>
                       {m.data || m.message || ""}
                     </td>
-                    <td style={tdStyle}>{src}</td>
+                    <td style={tdStyle}>
+                      {(m.attributes && (m.attributes.source || m.attributes.Source)) ||
+                        m.source ||
+                        ""}
+                    </td>
                     <td style={tdStyle}>{m.publishTime || m.created_at || ""}</td>
                     <td
                       style={{
