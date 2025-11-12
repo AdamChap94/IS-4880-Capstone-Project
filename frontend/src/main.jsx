@@ -1,6 +1,6 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
-import App from "./arc.app.jsx";
+import App from "./arc.app.jsx";   // NOTE the leading ./ and exact casing
 
-const container = document.getElementById("root");
-createRoot(container).render(<App />);
+createRoot(document.getElementById("root")).render(<App />);
+
