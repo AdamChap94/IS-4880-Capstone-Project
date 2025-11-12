@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 
-const API_BASE = import.meta.env.VITE_API_BASE; // set on Render
+const API_BASE = import.meta.env.VITE_API_BASE; 
 
 export default function App() {
-  const [view, setView] = useState("send"); // "send" or "receive"
+  const [view, setView] = useState("send"); 
 
   // KSU / MA colors
   const brandBlue = "#003366";
@@ -55,7 +55,11 @@ export default function App() {
           </button>
         </div>
 
-        {view === "send" ? <SenderPage brandBlue={brandBlue} brandGold={brandGold} /> : <ReceiverPage />}
+        {view === "send" ? (
+          <SenderPage brandBlue={brandBlue} brandGold={brandGold} />
+        ) : (
+          <ReceiverPage />
+        )}
       </div>
     </div>
   );
@@ -76,14 +80,18 @@ function SenderPage({ brandBlue, brandGold }) {
     setLoading(true);
     setFeedback("");
     try {
+      const trimmedId = messageId.trim();
+
       const body = {
+        messageId: trimmedId ? trimmedId : undefined,
         message,
         attributes: {
           source: source || "ui",
         },
       };
-      if (messageId.trim()) {
-        body.attributes.messageId = messageId.trim();
+
+      if (trimmedId) {
+        body.attributes.messageId = trimmedId;
       }
 
       const res = await fetch(`${API_BASE}/publish`, {
@@ -98,6 +106,7 @@ function SenderPage({ brandBlue, brandGold }) {
       } else {
         setFeedback("Message published.");
         setMessage("");
+       
       }
     } catch (err) {
       setFeedback("Network error while publishing.");
@@ -226,34 +235,65 @@ function ReceiverPage() {
   const brandGold = "#FFC72C";
   const lightGray = "#F3F4F6";
 
+ 
   const buildQuery = () => {
     const params = new URLSearchParams();
-    if (filterMessageId.trim()) params.append("messageId", filterMessageId.trim());
-    if (filterSource.trim()) params.append("source", filterSource.trim());
-    if (filterStart.trim()) params.append("start", filterStart.trim());
-    if (filterEnd.trim()) params.append("end", filterEnd.trim());
-    if (filterDuplicate) params.append("is_duplicate", filterDuplicate);
+
+    if (filterMessageId.trim()) {
+      params.append("messageId", filterMessageId.trim());
+      params.append("message_id", filterMessageId.trim());
+    }
+    if (filterSource.trim()) {
+      params.append("source", filterSource.trim());
+      params.append("Source", filterSource.trim());
+    }
+    if (filterStart.trim()) {
+      params.append("start", filterStart.trim());
+      params.append("start_time", filterStart.trim());
+    }
+    if (filterEnd.trim()) {
+      params.append("end", filterEnd.trim());
+      params.append("end_time", filterEnd.trim());
+    }
+    if (filterDuplicate) {
+      params.append("is_duplicate", filterDuplicate);
+      params.append("duplicate", filterDuplicate);
+    }
+
     params.append("page", page);
     params.append("limit", pageSize);
-    return `?${params.toString()}`;
+
+    const qs = params.toString();
+    return qs ? `?${qs}` : "";
   };
 
   const load = async () => {
     setLoading(true);
     try {
       const qs = buildQuery();
-      const res = await fetch(`${API_BASE}/messages${qs}`);
+
+  
+      let res = await fetch(`${API_BASE}/messages${qs}`);
+
+   
+      if (!res.ok) {
+        res = await fetch(`${API_BASE}/api/messages${qs}`);
+      }
+
       const data = await res.json();
 
-      // if backend returns { data: [...], total: n }
       if (data && Array.isArray(data.data)) {
         setMessages(data.data);
-        setTotal(data.total || data.data.length);
+        setTotal(typeof data.total === "number" ? data.total : data.data.length);
+      } else if (Array.isArray(data)) {
+        setMessages(data);
+        setTotal(data.length);
+      } else if (data && Array.isArray(data.results)) {
+        setMessages(data.results);
+        setTotal(typeof data.total === "number" ? data.total : data.results.length);
       } else {
-        // fallback to array
-        const arr = Array.isArray(data) ? data : [];
-        setMessages(arr);
-        setTotal(arr.length);
+        setMessages([]);
+        setTotal(0);
       }
     } catch (err) {
       setMessages([]);
@@ -263,14 +303,20 @@ function ReceiverPage() {
     }
   };
 
-  // initial load and auto refresh
+ 
   useEffect(() => {
     load();
-    if (autoRefresh) {
-      const id = setInterval(load, 10000);
-      return () => clearInterval(id);
-    }
-  }, [page, autoRefresh]); // reload when page changes or toggle changes
+
+  }, [page, filterMessageId, filterSource, filterStart, filterEnd, filterDuplicate]);
+
+ 
+  useEffect(() => {
+    if (!autoRefresh) return;
+    const id = setInterval(() => {
+      load();
+    }, 10000);
+    return () => clearInterval(id);
+  }, [autoRefresh, page, filterMessageId, filterSource, filterStart, filterEnd, filterDuplicate]);
 
   return (
     <div
@@ -310,7 +356,10 @@ function ReceiverPage() {
           </label>
           <input
             value={filterMessageId}
-            onChange={(e) => setFilterMessageId(e.target.value)}
+            onChange={(e) => {
+              setPage(1);
+              setFilterMessageId(e.target.value);
+            }}
             style={{ width: "100%", padding: 6, borderRadius: 6, border: "1px solid #cbd5f5" }}
             placeholder="msg-001"
           />
@@ -321,7 +370,10 @@ function ReceiverPage() {
           </label>
           <input
             value={filterSource}
-            onChange={(e) => setFilterSource(e.target.value)}
+            onChange={(e) => {
+              setPage(1);
+              setFilterSource(e.target.value);
+            }}
             style={{ width: "100%", padding: 6, borderRadius: 6, border: "1px solid #cbd5f5" }}
             placeholder="ui"
           />
@@ -333,7 +385,10 @@ function ReceiverPage() {
           <input
             type="datetime-local"
             value={filterStart}
-            onChange={(e) => setFilterStart(e.target.value)}
+            onChange={(e) => {
+              setPage(1);
+              setFilterStart(e.target.value);
+            }}
             style={{ width: "100%", padding: 6, borderRadius: 6, border: "1px solid #cbd5f5" }}
           />
         </div>
@@ -344,7 +399,10 @@ function ReceiverPage() {
           <input
             type="datetime-local"
             value={filterEnd}
-            onChange={(e) => setFilterEnd(e.target.value)}
+            onChange={(e) => {
+              setPage(1);
+              setFilterEnd(e.target.value);
+            }}
             style={{ width: "100%", padding: 6, borderRadius: 6, border: "1px solid #cbd5f5" }}
           />
         </div>
@@ -354,7 +412,10 @@ function ReceiverPage() {
           </label>
           <select
             value={filterDuplicate}
-            onChange={(e) => setFilterDuplicate(e.target.value)}
+            onChange={(e) => {
+              setPage(1);
+              setFilterDuplicate(e.target.value);
+            }}
             style={{ width: "100%", padding: 6, borderRadius: 6, border: "1px solid #cbd5f5" }}
           >
             <option value="">T/F</option>
@@ -389,7 +450,7 @@ function ReceiverPage() {
             setFilterEnd("");
             setFilterDuplicate("");
             setPage(1);
-            load();
+            setTimeout(() => load(), 0);
           }}
           style={{
             background: "#e2e8f0",
@@ -438,9 +499,11 @@ function ReceiverPage() {
             <tbody>
               {messages.map((m, idx) => {
                 const isDup =
-                  m.is_duplicate === true ||
-                  m.is_duplicate === "true" ||
-                  m.isDuplicate === true;
+                  m?.is_duplicate === true ||
+                  m?.is_duplicate === "true" ||
+                  m?.isDuplicate === true;
+                const attrs = m?.attributes || {};
+                const src = attrs.source || attrs.Source || m?.source || "";
                 return (
                   <tr
                     key={m.messageId || m.id || idx}
@@ -452,11 +515,7 @@ function ReceiverPage() {
                     <td style={{ ...tdStyle, maxWidth: 260, wordBreak: "break-word" }}>
                       {m.data || m.message || ""}
                     </td>
-                    <td style={tdStyle}>
-                      {(m.attributes && (m.attributes.source || m.attributes.Source)) ||
-                        m.source ||
-                        ""}
-                    </td>
+                    <td style={tdStyle}>{src}</td>
                     <td style={tdStyle}>{m.publishTime || m.created_at || ""}</td>
                     <td
                       style={{
