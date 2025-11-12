@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import MessageComposer from "./MessageComposer.jsx";
-import MessageRow from "./MessageRow.jsx";
+import MessageComposer from "../MessageComposer.jsx";
+import MessageRow from "../MessageRow.jsx";
 
 const API = import.meta.env.VITE_API_BASE || "";
 
