@@ -224,8 +224,11 @@ def debug_pull_once():
 @app.route("/publish", methods=["POST"])
 def publish_route():
     payload = request.get_json(silent=True) or {}
+
+    # accept both "data" and "message" keys from frontend
     raw = (payload.get("data") or payload.get("message") or "").strip()
     attrs = payload.get("attributes") or {}
+
     if not raw:
         return jsonify({"error": "message is required"}), 400
 
@@ -233,18 +236,18 @@ def publish_route():
     flagged = contains_bad(raw)
     to_send = mask_text(raw) if flagged else raw
 
-
     try:
         future = publisher.publish(
             topic_path,
             to_send.encode("utf-8"),
-            **{k: str(v) for k, v in attrs.items()}
+            **{k: str(v) for k, v in attrs.items()},
         )
         msg_id = future.result(timeout=20)
         return jsonify({"status": "published", "messageId": msg_id, "flagged": flagged}), 200
     except Exception as e:
         print(f"[ERROR] publish failed: {e!r}", flush=True)
         return jsonify({"error": "publish failed", "details": str(e)}), 500
+
 
 
 @app.route("/messages", methods=["GET"])
