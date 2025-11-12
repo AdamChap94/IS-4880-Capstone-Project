@@ -405,10 +405,11 @@ def start_streaming_pull():
 
 
 
-# app/profanity.py (same as before)
+from flask import Flask, request, jsonify
 from better_profanity import profanity
 import regex as re, unicodedata as ud, os
 
+# --- profanity helpers (were "profanity.py") ---
 profanity.load_censor_words()
 extra = [w.strip() for w in os.getenv("PROFANITY_EXTRA_WORDS","").split(",") if w.strip()]
 white = [w.strip() for w in os.getenv("PROFANITY_WHITELIST","").split(",") if w.strip()]
@@ -427,16 +428,16 @@ def contains_bad(t: str) -> bool:
     return profanity.contains_profanity(_norm(t))
 
 def mask(t: str) -> str:
-    # Masks only profane tokens, leaving everything else intact
     return profanity.censor(_norm(t), censor_char="*")
 
-# app/routes.py (publish endpoint)
-from flask import Blueprint, request, jsonify
-from .profanity import contains_bad, mask
+# --- flask app + routes (were "routes.py") ---
+app = Flask(__name__)
 
-bp = Blueprint("api", __name__)
+@app.get("/health")
+def health():
+    return {"ok": True}
 
-@bp.post("/api/messages")
+@app.post("/api/messages")
 def publish():
     data = request.get_json(force=True) or {}
     raw_text = (data.get("data") or "").strip()
@@ -444,13 +445,13 @@ def publish():
     flagged = contains_bad(raw_text)
     stored_text = mask(raw_text) if flagged else raw_text
 
-    # persist masked text + flag
-    # db.save_message(data=stored_text, is_flagged=flagged, ...)
+    # TODO: persist stored_text + flagged as needed
     return jsonify({
         "ok": True,
         "flagged": flagged,
         "data": stored_text
     }), 200
+
 
 
 
