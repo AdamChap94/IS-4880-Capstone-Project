@@ -267,41 +267,61 @@ function ReceiverPage() {
     return qs ? `?${qs}` : "";
   };
 
-  const load = async () => {
-    setLoading(true);
-    try {
-      const qs = buildQuery();
+const send = async () => {
+  if (!message.trim()) {
+    setFeedback("Message cannot be empty.");
+    return;
+  }
+  setLoading(true);
+  setFeedback("");
+  try {
+    const trimmedId = messageId.trim();
 
-  
-      let res = await fetch(`${API_BASE}/messages${qs}`);
-
-   
-      if (!res.ok) {
-        res = await fetch(`${API_BASE}/api/messages${qs}`);
-      }
-
-      const data = await res.json();
-
-      if (data && Array.isArray(data.data)) {
-        setMessages(data.data);
-        setTotal(typeof data.total === "number" ? data.total : data.data.length);
-      } else if (Array.isArray(data)) {
-        setMessages(data);
-        setTotal(data.length);
-      } else if (data && Array.isArray(data.results)) {
-        setMessages(data.results);
-        setTotal(typeof data.total === "number" ? data.total : data.results.length);
-      } else {
-        setMessages([]);
-        setTotal(0);
-      }
-    } catch (err) {
-      setMessages([]);
-      setTotal(0);
-    } finally {
-      setLoading(false);
+    const body = {
+      messageId: trimmedId ? trimmedId : undefined, // top-level
+      message,
+      attributes: {
+        source: source || "ui",
+      },
+    };
+    if (trimmedId) {
+      body.attributes.messageId = trimmedId; // also in attributes
     }
-  };
+
+    // try /publish first
+    let res = await fetch(`${API_BASE}/publish`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    // if /publish doesn't exist, try /api/publish
+    if (!res.ok) {
+      const alt = await fetch(`${API_BASE}/api/publish`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      res = alt;
+    }
+
+    if (!res.ok) {
+      // try to read text so we see the real backend error
+      const errText = await res.text();
+      setFeedback(`Publish failed: ${errText || res.status}`);
+    } else {
+      setFeedback("Message published.");
+      setMessage("");
+    }
+  } catch (err) {
+    // this is where "network error" was coming from
+    setFeedback(
+      "Network error while publishing. Check VITE_API_BASE in Render and that the backend URL is reachable."
+    );
+  } finally {
+    setLoading(false);
+  }
+};
 
  
   useEffect(() => {
