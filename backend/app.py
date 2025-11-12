@@ -109,6 +109,31 @@ SYNC_THREAD_STARTED = False
 SUBSCRIBER = pubsub_v1.SubscriberClient(credentials=CREDS)
 SUB_FUTURE = None
 
+from better_profanity import profanity
+import regex as re, unicodedata as ud
+
+# --- profanity helpers (inline) ---
+profanity.load_censor_words()
+_extra = [w.strip() for w in os.getenv("PROFANITY_EXTRA_WORDS","").split(",") if w.strip()]
+_white = [w.strip() for w in os.getenv("PROFANITY_WHITELIST","").split(",") if w.strip()]
+if _extra: profanity.add_censor_words(_extra)
+for w in _white: profanity.remove_word(w)
+
+def _norm(t: str) -> str:
+    t = ud.normalize("NFKC", t)
+    t = re.sub(r"[@4]", "a", t, flags=re.I)
+    t = re.sub(r"[!1]", "i", t, flags=re.I)
+    t = re.sub(r"[$5]", "s", t, flags=re.I)
+    t = re.sub(r"(.)\1{2,}", r"\1\1", t)
+    return t
+
+def contains_bad(t: str) -> bool:
+    return profanity.contains_profanity(_norm(t))
+
+def mask_text(t: str) -> str:
+    return profanity.censor(_norm(t), censor_char="*")
+
+
 # -----------------------------
 # Routes
 # -----------------------------
@@ -203,16 +228,23 @@ def publish_route():
     attrs = payload.get("attributes") or {}
     if not msg:
         return jsonify({"error": "message is required"}), 400
+
+    # profanity check + mask BEFORE publishing
+    flagged = contains_bad(msg)
+    to_send = mask_text(msg) if flagged else msg
+
     try:
         future = publisher.publish(
-            topic_path, msg.encode("utf-8"),
+            topic_path,
+            to_send.encode("utf-8"),
             **{k: str(v) for k, v in attrs.items()}
         )
         msg_id = future.result(timeout=20)
-        return jsonify({"status": "published", "messageId": msg_id}), 200
+        return jsonify({"status": "published", "messageId": msg_id, "flagged": flagged}), 200
     except Exception as e:
         print(f"[ERROR] publish failed: {e!r}", flush=True)
         return jsonify({"error": "publish failed", "details": str(e)}), 500
+
 
 @app.route("/messages", methods=["GET"])
 def messages():
@@ -349,6 +381,19 @@ def messages_debug():
         }, 200
     except Exception as e:
         return {"error": str(e)}, 500
+
+# GET alias so UI can call /api/messages
+@app.route("/api/messages", methods=["GET"])
+def api_messages_list():
+    with RECENT_LOCK:
+        out = list(RECENT)[::-1]
+    return jsonify(out), 200
+
+# POST alias so UI can post to /api/messages if desired
+@app.route("/api/messages", methods=["POST"])
+def api_messages_publish():
+    return publish_route()
+
         
 
 
@@ -405,52 +450,6 @@ def start_streaming_pull():
 
 
 
-from flask import Flask, request, jsonify
-from better_profanity import profanity
-import regex as re, unicodedata as ud, os
-
-# --- profanity helpers (were "profanity.py") ---
-profanity.load_censor_words()
-extra = [w.strip() for w in os.getenv("PROFANITY_EXTRA_WORDS","").split(",") if w.strip()]
-white = [w.strip() for w in os.getenv("PROFANITY_WHITELIST","").split(",") if w.strip()]
-if extra: profanity.add_censor_words(extra)
-for w in white: profanity.remove_word(w)
-
-def _norm(t: str) -> str:
-    t = ud.normalize("NFKC", t)
-    t = re.sub(r"[@4]", "a", t, flags=re.I)
-    t = re.sub(r"[!1]", "i", t, flags=re.I)
-    t = re.sub(r"[$5]", "s", t, flags=re.I)
-    t = re.sub(r"(.)\1{2,}", r"\1\1", t)
-    return t
-
-def contains_bad(t: str) -> bool:
-    return profanity.contains_profanity(_norm(t))
-
-def mask(t: str) -> str:
-    return profanity.censor(_norm(t), censor_char="*")
-
-# --- flask app + routes (were "routes.py") ---
-app = Flask(__name__)
-
-@app.get("/health")
-def health():
-    return {"ok": True}
-
-@app.post("/api/messages")
-def publish():
-    data = request.get_json(force=True) or {}
-    raw_text = (data.get("data") or "").strip()
-
-    flagged = contains_bad(raw_text)
-    stored_text = mask(raw_text) if flagged else raw_text
-
-    # TODO: persist stored_text + flagged as needed
-    return jsonify({
-        "ok": True,
-        "flagged": flagged,
-        "data": stored_text
-    }), 200
 
 
 
