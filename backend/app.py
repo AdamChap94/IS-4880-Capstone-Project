@@ -224,14 +224,15 @@ def debug_pull_once():
 @app.route("/publish", methods=["POST"])
 def publish_route():
     payload = request.get_json(silent=True) or {}
-    msg = (payload.get("message") or "").strip()
+   raw = (payload.get("data") or payload.get("message") or "").strip()
     attrs = payload.get("attributes") or {}
-    if not msg:
+    if not raw:
         return jsonify({"error": "message is required"}), 400
 
     # profanity check + mask BEFORE publishing
-    flagged = contains_bad(msg)
-    to_send = mask_text(msg) if flagged else msg
+    flagged = contains_bad(raw)
+    to_send = mask_text(raw) if flagged else raw
+
 
     try:
         future = publisher.publish(
@@ -385,9 +386,14 @@ def messages_debug():
 # GET alias so UI can call /api/messages
 @app.route("/api/messages", methods=["GET"])
 def api_messages_list():
-    with RECENT_LOCK:
-        out = list(RECENT)[::-1]
-    return jsonify(out), 200
+    # return your recent messages; for a deque store called STORE:
+    page = int(request.args.get("page", 1))
+    limit = int(request.args.get("limit", 10))
+    start = (page - 1) * limit
+    end = start + limit
+    items = list(STORE)[start:end]
+    return jsonify({"items": items, "total": len(STORE), "page": page, "limit": limit}), 200
+
 
 # POST alias so UI can post to /api/messages if desired
 @app.route("/api/messages", methods=["POST"])
