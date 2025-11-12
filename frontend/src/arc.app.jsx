@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react";
-// force absolute paths from project root served by Vite
-import MessageComposer from "/src/MessageComposer.jsx";
-import MessageRow from "/src/MessageRow.jsx";
-
+import MessageComposer from "./MessageComposer.jsx";
+import MessageRow from "./MessageRow.jsx";
 
 const API = import.meta.env.VITE_API_BASE || "";
 
@@ -27,17 +25,14 @@ export default function App() {
   }, []);
 
   function handleNewMessage(msg) {
-    // prepend new message for real-time UI
-    setMessages((prev) => [msg, ...prev]);
+    setMessages(prev => [msg, ...prev]);
   }
 
   return (
-    <div className="container" style={{ maxWidth: 720, margin: "0 auto", padding: "1rem" }}>
+    <div style={{ maxWidth: 720, margin: "0 auto", padding: "1rem" }}>
       <h1>Group 5 Pub/Sub</h1>
-
       <MessageComposer onMessage={handleNewMessage} />
-
-      <div className="list" style={{ marginTop: "1rem" }}>
+      <div style={{ marginTop: "1rem" }}>
         {messages.map((m, i) => (
           <MessageRow key={i} text={m.text} flagged={m.flagged} />
         ))}
@@ -45,3 +40,4 @@ export default function App() {
     </div>
   );
 }
+
