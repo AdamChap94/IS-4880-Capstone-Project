@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
-import MessageComposer from "./MessageComposer.jsx";
-import MessageRow from "./MessageRow.jsx";
+// force absolute paths from project root served by Vite
+import MessageComposer from "/src/MessageComposer.jsx";
+import MessageRow from "/src/MessageRow.jsx";
+
 
 const API = import.meta.env.VITE_API_BASE || "";
 
