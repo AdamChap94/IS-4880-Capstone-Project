@@ -224,7 +224,7 @@ def debug_pull_once():
 @app.route("/publish", methods=["POST"])
 def publish_route():
     payload = request.get_json(silent=True) or {}
-   raw = (payload.get("data") or payload.get("message") or "").strip()
+    raw = (payload.get("data") or payload.get("message") or "").strip()
     attrs = payload.get("attributes") or {}
     if not raw:
         return jsonify({"error": "message is required"}), 400
