@@ -387,7 +387,6 @@ def _parse_dt(val: str):
 
 @app.get("/api/messages")
 def list_messages():
-    # --- read query params from frontend ---
     msg_id = request.args.get("messageId", "").strip()
     source = request.args.get("source", "").strip()
     start  = request.args.get("start", "").strip()
@@ -403,57 +402,70 @@ def list_messages():
         limit = int(request.args.get("limit", "10"))
     except ValueError:
         limit = 10
-    if page < 1:
-        page = 1
-    if limit < 1 or limit > 100:
-        limit = 10
+    offset = (page - 1) * limit
 
-    start_dt = _parse_dt(start)
-    end_dt   = _parse_dt(end)
+    # build WHERE clauses dynamically
+    where = []
+    params = {}
 
-    with Session() as session:
-        q = session.query(Message)
+    if msg_id:
+        where.append("message_id = :msg_id")
+        params["msg_id"] = msg_id
 
-        # --- apply filters if present ---
-        if msg_id:
-            # exact match; use .ilike(f"%{msg_id}%") if you want partial
-            q = q.filter(Message.message_id == msg_id)
+    if source:
+        where.append("source = :source")
+        params["source"] = source
 
-        if source:
-            q = q.filter(Message.source == source)
+    if start:
+        where.append("publish_time >= :start")
+        params["start"] = start
 
-        if start_dt:
-            q = q.filter(Message.publish_time >= start_dt)
+    if end:
+        where.append("publish_time <= :end")
+        params["end"] = end
 
-        if end_dt:
-            q = q.filter(Message.publish_time <= end_dt)
+    if dup in ("true", "false"):
+        where.append("is_duplicate = :dup")
+        params["dup"] = (dup == "true")
 
-        if dup in ("true", "false"):
-            q = q.filter(Message.is_duplicate == (dup == "true"))
+    where_sql = ""
+    if where:
+        where_sql = "WHERE " + " AND ".join(where)
 
-        # order newest first
-        q = q.order_by(Message.publish_time.desc())
+    query_items = f"""
+        SELECT id, message_id, data, source, publish_time, is_duplicate
+        FROM messages
+        {where_sql}
+        ORDER BY publish_time DESC
+        LIMIT :limit OFFSET :offset
+    """
 
-        # --- pagination ---
-        total = q.count()
-        items = (
-            q.offset((page - 1) * limit)
-             .limit(limit)
-             .all()
-        )
+    query_count = f"""
+        SELECT COUNT(*)
+        FROM messages
+        {where_sql}
+    """
 
-        # shape for your React table
-        def to_dict(m: Message):
-            return {
-                "id": m.id,
-                "messageId": m.message_id,
-                "data": m.data,
-                "source": m.source,
-                "publishTime": m.publish_time.isoformat() if m.publish_time else None,
-                "is_duplicate": m.is_duplicate,
-            }
+    params["limit"] = limit
+    params["offset"] = offset
 
-        return jsonify({"items": [to_dict(m) for m in items], "total": total})
+    with engine.begin() as conn:
+        rows = conn.execute(text(query_items), params).fetchall()
+        total = conn.execute(text(query_count), params).scalar()
+
+    items = []
+    for r in rows:
+        items.append({
+            "id": r.id,
+            "messageId": r.message_id,
+            "data": r.data,
+            "source": r.source,
+            "publishTime": r.publish_time.isoformat(),
+            "is_duplicate": bool(r.is_duplicate),
+        })
+
+    return jsonify({"items": items, "total": total})
+
 
 
 
