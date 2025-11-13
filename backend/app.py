@@ -135,9 +135,6 @@ try:
 except Exception as e:
     print(f"[BOOT] could not read SA file: {e!r}", flush=True)
 
-RECENT = deque(maxlen=2000)
-RECENT_LOCK = threading.Lock()
-
 def _now_iso():
     return datetime.now(timezone.utc).isoformat()
 
@@ -160,7 +157,7 @@ except Exception as e:
     die(f"Failed to init PublisherClient/topic_path: {e!r}")
 
 # In-memory ring buffer for UI (POC-friendly)
-RECENT = collections.deque(maxlen=200)
+RECENT = collections.deque(maxlen=2000)
 RECENT_LOCK = threading.Lock()
 # --- Puller thread guards ---
 SYNC_THREAD_STARTED = False
