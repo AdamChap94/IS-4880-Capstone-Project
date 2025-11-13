@@ -233,11 +233,8 @@ def debug_pull_once():
 @app.route("/publish", methods=["POST"])
 def publish_route():
     payload = request.get_json(silent=True) or {}
-
-    # accept both "data" and "message" keys from frontend
     raw = (payload.get("data") or payload.get("message") or "").strip()
     attrs = payload.get("attributes") or {}
-
     if not raw:
         return jsonify({"error": "message is required"}), 400
 
@@ -253,24 +250,22 @@ def publish_route():
         )
         msg_id = future.result(timeout=20)
 
-record = {
-    "messageId": (attrs.get("messageId") if isinstance(attrs, dict) else None),
-    "data": to_send,
-    "attributes": attrs if isinstance(attrs, dict) else {},
-    "flagged": bool(flagged),
-    "created_at": _now_iso(),
-    "publishTime": _now_iso(),
-    "is_duplicate": False,
-}
-with RECENT_LOCK:
-    RECENT.appendleft(record)
+        record = {
+            "message": to_send,
+            "attributes": attrs,
+            "is_duplicate": False,
+            "publishTime": datetime.utcnow().isoformat() + "Z",
+            "id": msg_id,
+        }
 
-return jsonify({"status": "published", "messageId": msg_id, "flagged": flagged}), 200
+        # Optional: store in memory or database if applicable
+        if hasattr(g, "STORE"):
+            g.STORE.append(record)
+
+        return jsonify({"message": "published", "id": msg_id}), 200
 
     except Exception as e:
-        print(f"[ERROR] publish failed: {e!r}", flush=True)
-        return jsonify({"error": "publish failed", "details": str(e)}), 500
-
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/messages", methods=["GET"])
