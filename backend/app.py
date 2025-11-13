@@ -412,19 +412,19 @@ def list_messages():
     where = []
     params: dict[str, object] = {}
 
-    # NOTE: use client_message_id (your dedupe key) for "Message ID"
     if msg_id:
-    # exact match on the client_message_id column
+        # ✅ exact match on client_message_id
         where.append("client_message_id = :msg_id")
         params["msg_id"] = msg_id
-
-    if source:
-        where.append("source = :source")
-        params["source"] = source
+    else:
+        # ✅ only use source filter when we're NOT searching by ID
+        if source:
+            where.append("source = :source")
+            params["source"] = source
 
     if start:
         where.append("publish_time >= :start")
-        params["start"] = start  # ISO string works for timestamptz
+        params["start"] = start
 
     if end:
         where.append("publish_time <= :end")
