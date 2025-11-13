@@ -10,6 +10,8 @@ from collections import deque
 import threading
 from datetime import datetime, timezone
 
+STORE = []
+
 # -----------------------------
 # Config via env
 # -----------------------------
@@ -258,9 +260,7 @@ def publish_route():
             "id": msg_id,
         }
 
-        # Optional: store in memory or database if applicable
-        if hasattr(g, "STORE"):
-            g.STORE.append(record)
+        STORE.append(record)
 
         return jsonify({"message": "published", "id": msg_id}), 200
 
