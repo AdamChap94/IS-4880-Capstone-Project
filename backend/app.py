@@ -6,6 +6,9 @@ from google.api_core.exceptions import NotFound
 from google.oauth2 import service_account
 import time
 from google.oauth2 import service_account
+from collections import deque
+import threading
+from datetime import datetime, timezone
 
 # -----------------------------
 # Config via env
@@ -79,6 +82,12 @@ try:
         print(f"[BOOT] SERVICE_ACCOUNT_EMAIL={info.get('client_email')}", flush=True)
 except Exception as e:
     print(f"[BOOT] could not read SA file: {e!r}", flush=True)
+
+RECENT = deque(maxlen=2000)
+RECENT_LOCK = threading.Lock()
+
+def _now_iso():
+    return datetime.now(timezone.utc).isoformat()
 
 # Flask
 app = Flask(__name__)
@@ -242,8 +251,22 @@ def publish_route():
             to_send.encode("utf-8"),
             **{k: str(v) for k, v in attrs.items()},
         )
-        msg_id = future.result(timeout=20)
-        return jsonify({"status": "published", "messageId": msg_id, "flagged": flagged}), 200
+       msg_id = future.result(timeout=20)
+
+record = {
+    "messageId": (attrs.get("messageId") if isinstance(attrs, dict) else None),
+    "data": to_send,
+    "attributes": attrs if isinstance(attrs, dict) else {},
+    "flagged": bool(flagged),
+    "created_at": _now_iso(),
+    "publishTime": _now_iso(),
+    "is_duplicate": False,
+}
+with RECENT_LOCK:
+    RECENT.appendleft(record)
+
+return jsonify({"status": "published", "messageId": msg_id, "flagged": flagged}), 200
+
     except Exception as e:
         print(f"[ERROR] publish failed: {e!r}", flush=True)
         return jsonify({"error": "publish failed", "details": str(e)}), 500
@@ -389,13 +412,22 @@ def messages_debug():
 # GET alias so UI can call /api/messages
 @app.route("/api/messages", methods=["GET"])
 def api_messages_list():
-    # return your recent messages; for a deque store called STORE:
-    page = int(request.args.get("page", 1))
-    limit = int(request.args.get("limit", 10))
+    try:
+        page = int(request.args.get("page", 1))
+        limit = int(request.args.get("limit", 10))
+    except ValueError:
+        page, limit = 1, 10
+    if page < 1: page = 1
+    if limit < 1: limit = 10
+
     start = (page - 1) * limit
     end = start + limit
-    items = list(STORE)[start:end]
-    return jsonify({"items": items, "total": len(STORE), "page": page, "limit": limit}), 200
+
+    with RECENT_LOCK:
+        items = list(RECENT)[start:end]
+        total = len(RECENT)
+
+    return jsonify({"items": items, "total": total, "page": page, "limit": limit}), 200
 
 
 # POST alias so UI can post to /api/messages if desired
