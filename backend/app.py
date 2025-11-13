@@ -55,6 +55,25 @@ engine = create_engine(
     pool_recycle=1800,
     pool_timeout=30,
 )
+# Create messages table if it doesn't exist
+from sqlalchemy import text
+
+with engine.begin() as conn:
+    conn.execute(text("""
+        CREATE TABLE IF NOT EXISTS messages (
+            id BIGSERIAL PRIMARY KEY,
+            message_id TEXT,
+            data TEXT NOT NULL,
+            source TEXT,
+            attributes JSONB,
+            publish_time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            is_duplicate BOOLEAN NOT NULL DEFAULT FALSE
+        );
+    """))
+    # helpful index for lookups by message_id
+    conn.execute(text("CREATE INDEX IF NOT EXISTS idx_messages_message_id ON messages(message_id);"))
+    conn.execute(text("CREATE INDEX IF NOT EXISTS idx_messages_publish_time ON messages(publish_time DESC);"))
+
 
 
 def start_sync_poll_loop():
@@ -271,27 +290,48 @@ def publish_route():
     if not raw:
         return jsonify({"error": "message is required"}), 400
 
-    # profanity check + mask BEFORE publishing
+    # mask profanity before publishing
     flagged = contains_bad(raw)
     to_send = mask_text(raw) if flagged else raw
 
+    # pull a source label from attributes if present
+    source = (attrs.get("source") or attrs.get("Source") or "ui")
+
     try:
-        future = publisher.publish(
+        # Publish to Pub/Sub
+        fut = publisher.publish(
             topic_path,
             to_send.encode("utf-8"),
             **{k: str(v) for k, v in attrs.items()},
         )
-        msg_id = future.result(timeout=20)
+        msg_id = fut.result(timeout=20)
 
-        record = {
-            "message": to_send,
-            "attributes": attrs,
-            "is_duplicate": False,
+        # Persist to Cloud SQL
+        with engine.begin() as conn:
+            conn.execute(
+                text("""
+                    INSERT INTO messages (message_id, data, source, attributes, publish_time, is_duplicate)
+                    VALUES (:message_id, :data, :source, CAST(:attributes AS JSONB), NOW(), :is_duplicate)
+                """),
+                {
+                    "message_id": msg_id,
+                    "data": to_send,
+                    "source": source,
+                    "attributes": json.dumps(attrs),
+                    "is_duplicate": False,  # you can wire real dup detection later
+                },
+            )
+
+        # still append to in-memory RECENT so your Receiver page updates immediately
+        item = {
+            "messageId": msg_id,
+            "data": to_send,
+            "attributes": {"source": source, **attrs},
             "publishTime": datetime.utcnow().isoformat() + "Z",
-            "id": msg_id,
+            "is_duplicate": False,
         }
-
-        STORE.append(record)
+        with RECENT_LOCK:
+            RECENT.append(item)
 
         return jsonify({"message": "published", "id": msg_id}), 200
 
@@ -299,12 +339,70 @@ def publish_route():
         return jsonify({"error": str(e)}), 500
 
 
-@app.route("/messages", methods=["GET"])
-def messages():
-    # newest first; use the same lock the poller uses
-    with RECENT_LOCK:
-        out = list(RECENT)[::-1]
-    return jsonify(out), 200
+@app.route("/api/messages", methods=["GET"])
+def api_messages_list():
+    # query params
+    page = max(int(request.args.get("page", 1) or 1), 1)
+    limit = max(int(request.args.get("limit", 10) or 10), 1)
+
+    message_id = (request.args.get("messageId") or "").strip()
+    source = (request.args.get("source") or "").strip()
+    start = (request.args.get("start") or "").strip()    # ISO or 'YYYY-MM-DDTHH:MM'
+    end   = (request.args.get("end") or "").strip()
+    dup   = (request.args.get("is_duplicate") or "").strip().lower()  # "true"/"false" or ""
+
+    # build WHERE dynamically
+    clauses = []
+    params = {}
+    if message_id:
+        clauses.append("message_id = :message_id")
+        params["message_id"] = message_id
+    if source:
+        clauses.append("COALESCE(source, '') ILIKE :source")
+        params["source"] = f"%{source}%"
+    if start:
+        clauses.append("publish_time >= :start")
+        params["start"] = start
+    if end:
+        clauses.append("publish_time <= :end")
+        params["end"] = end
+    if dup in ("true", "false"):
+        clauses.append("is_duplicate = :dup")
+        params["dup"] = (dup == "true")
+
+    where_sql = ("WHERE " + " AND ".join(clauses)) if clauses else ""
+    offset = (page - 1) * limit
+
+    with engine.begin() as conn:
+        total = conn.execute(
+            text(f"SELECT COUNT(*) FROM messages {where_sql}")
+        , params).scalar_one()
+
+        rows = conn.execute(
+            text(f"""
+                SELECT message_id, data, source, attributes, publish_time, is_duplicate
+                FROM messages
+                {where_sql}
+                ORDER BY publish_time DESC
+                LIMIT :limit OFFSET :offset
+            """),
+            {**params, "limit": limit, "offset": offset}
+        ).mappings().all()
+
+    # map to the shape your frontend expects
+    items = []
+    for r in rows:
+        attrs = r["attributes"] if isinstance(r["attributes"], dict) else json.loads(r["attributes"] or "{}")
+        items.append({
+            "messageId": r["message_id"],
+            "data": r["data"],
+            "attributes": {"source": r["source"], **attrs} if r["source"] else attrs,
+            "publishTime": r["publish_time"].isoformat() if hasattr(r["publish_time"], "isoformat") else str(r["publish_time"]),
+            "is_duplicate": bool(r["is_duplicate"]),
+        })
+
+    return jsonify({"items": items, "total": total, "page": page, "limit": limit}), 200
+
 
 # --- background poll launcher (ensures thread only starts once) ---
 from flask import current_app
