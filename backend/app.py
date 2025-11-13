@@ -281,59 +281,72 @@ def debug_pull_once():
 
 @app.route("/publish", methods=["POST"])
 def publish_route():
+    t0 = time.time()
     payload = request.get_json(silent=True) or {}
+
     raw = (payload.get("data") or payload.get("message") or "").strip()
     attrs = payload.get("attributes") or {}
     if not raw:
         return jsonify({"error": "message is required"}), 400
 
-    # mask profanity before publishing
+    # profanity check + mask BEFORE publishing
     flagged = contains_bad(raw)
     to_send = mask_text(raw) if flagged else raw
 
-    # pull a source label from attributes if present
-    source = (attrs.get("source") or attrs.get("Source") or "ui")
-
+    # Publish to Pub/Sub (wait briefly, but don't block the request forever)
+    pub_id = None
     try:
-        # Publish to Pub/Sub
-        fut = publisher.publish(
+        future = publisher.publish(
             topic_path,
             to_send.encode("utf-8"),
             **{k: str(v) for k, v in attrs.items()},
         )
-        msg_id = fut.result(timeout=20)
-
-        # Persist to Cloud SQL
-        with engine.begin() as conn:
-            conn.execute(
-                text("""
-                    INSERT INTO messages (message_id, data, source, attributes, publish_time, is_duplicate)
-                    VALUES (:message_id, :data, :source, CAST(:attributes AS JSONB), NOW(), :is_duplicate)
-                """),
-                {
-                    "message_id": msg_id,
-                    "data": to_send,
-                    "source": source,
-                    "attributes": json.dumps(attrs),
-                    "is_duplicate": False,  # you can wire real dup detection later
-                },
-            )
-
-        # still append to in-memory RECENT so your Receiver page updates immediately
-        item = {
-            "messageId": msg_id,
-            "data": to_send,
-            "attributes": {"source": source, **attrs},
-            "publishTime": datetime.utcnow().isoformat() + "Z",
-            "is_duplicate": False,
-        }
-        with RECENT_LOCK:
-            RECENT.append(item)
-
-        return jsonify({"message": "published", "id": msg_id}), 200
-
+        try:
+            pub_id = future.result(timeout=5)  # was 20; keep this snappy
+        except Exception as e:
+            app.logger.warning("Publish not confirmed within 5s (continuing): %s", e)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        app.logger.exception("Publish failed before future: %s", e)
+        return jsonify({"error": f"publish failed: {e}"}), 500
+
+    t_pub = time.time()
+
+    # Persist to DB regardless (use publish_time=NOW)
+    record = {
+        "message_id": attrs.get("messageId") or pub_id,
+        "data": to_send,
+        "source": attrs.get("source"),
+        "attributes": json.dumps(attrs),
+        "is_duplicate": False,
+    }
+    try:
+        with engine.begin() as conn:
+            conn.execute(text("""
+                INSERT INTO messages (message_id, data, source, attributes, is_duplicate)
+                VALUES (:message_id, :data, :source, :attributes, :is_duplicate)
+            """), record)
+    except Exception as e:
+        app.logger.exception("DB insert failed: %s", e)
+        # Still return success for UX; surface DB error in payload
+        return jsonify({
+            "status": "published",
+            "messageId": pub_id or attrs.get("messageId") or "pending",
+            "profanity_masked": bool(flagged),
+            "db_error": str(e),
+        }), 200
+
+    t_db = time.time()
+    app.logger.info(
+        "Publish route timings: total=%.3fs pub=%.3fs db=%.3fs",
+        t_db - t0, t_pub - t0, t_db - t_pub
+    )
+
+    return jsonify({
+        "status": "published",
+        "messageId": pub_id or attrs.get("messageId") or "pending",
+        "profanity_masked": bool(flagged),
+    }), 200
+
 
 
 @app.route("/api/messages", methods=["GET"])
