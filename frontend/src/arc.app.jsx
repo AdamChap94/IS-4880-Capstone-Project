@@ -180,7 +180,7 @@ await fetch(`${API_BASE}/publish`, { method: "POST", headers: { "Content-Type": 
             }}
             value={messageId}
             onChange={(e) => setMessageId(e.target.value)}
-            placeholder="e.g. msg-001"
+            placeholder="example 001"
           />
         </div>
       </div>
@@ -220,7 +220,7 @@ function ReceiverPage({ brandBlue, brandGold }) {
   // auto refresh
   const [autoRefresh, setAutoRefresh] = useState(true);
 
-  // filters (kept for future; backend may not use them yet)
+  // filters 
   const [filterMessageId, setFilterMessageId] = useState("");
   const [filterSource, setFilterSource] = useState("");
   const [filterStart, setFilterStart] = useState("");
