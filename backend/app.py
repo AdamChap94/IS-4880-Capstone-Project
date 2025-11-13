@@ -365,49 +365,96 @@ def publish_route():
 
 
 
-@app.route("/api/messages", methods=["GET"])
-def api_messages_list():
+
+
+# helper if your datetime-local is missing seconds
+def _parse_dt(val: str):
+    """
+    Parse HTML datetime-local (e.g. '2025-11-13T23:09' or '2025-11-13T23:09:57')
+    into a Python datetime.
+    """
+    if not val:
+        return None
     try:
-        page = max(int(request.args.get("page", 1)), 1)
-        limit = max(min(int(request.args.get("limit", 10)), 200), 1)
+        return datetime.fromisoformat(val)
     except ValueError:
-        page, limit = 1, 10
-    offset = (page - 1) * limit
+        # try without seconds
+        try:
+            return datetime.strptime(val, "%Y-%m-%dT%H:%M")
+        except ValueError:
+            return None
 
-    # Basic list with total count
-    with engine.begin() as conn:
-        total = conn.execute(text("SELECT COUNT(*) FROM messages")).scalar() or 0
 
-        rows = conn.execute(text("""
-            SELECT
-                id,
-                client_message_id AS "messageId",
-                pubsub_message_id,
-                data,
-                source,
-                attributes,
-                publish_time,
-                is_duplicate
-            FROM messages
-            ORDER BY id DESC
-            LIMIT :limit OFFSET :offset
-        """), {"limit": limit, "offset": offset}).mappings().all()
+@app.get("/api/messages")
+def list_messages():
+    # --- read query params from frontend ---
+    msg_id = request.args.get("messageId", "").strip()
+    source = request.args.get("source", "").strip()
+    start  = request.args.get("start", "").strip()
+    end    = request.args.get("end", "").strip()
+    dup    = request.args.get("is_duplicate", "").strip().lower()
 
-        # Normalize output for UI
-        data = []
-        for r in rows:
-            data.append({
-                "id": r["id"],
-                "messageId": r["messageId"],                 # the dedupe key you control
-                "pubsubMessageId": r["pubsub_message_id"],   # optional: if you want to show it
-                "data": r["data"],
-                "source": r["source"],
-                "attributes": r["attributes"],
-                "publishTime": r["publish_time"].isoformat() if r["publish_time"] else None,
-                "is_duplicate": bool(r["is_duplicate"]),
-            })
+    # pagination
+    try:
+        page = int(request.args.get("page", "1"))
+    except ValueError:
+        page = 1
+    try:
+        limit = int(request.args.get("limit", "10"))
+    except ValueError:
+        limit = 10
+    if page < 1:
+        page = 1
+    if limit < 1 or limit > 100:
+        limit = 10
 
-    return jsonify({"ok": True, "data": data, "total": total}), 200
+    start_dt = _parse_dt(start)
+    end_dt   = _parse_dt(end)
+
+    with Session() as session:
+        q = session.query(Message)
+
+        # --- apply filters if present ---
+        if msg_id:
+            # exact match; use .ilike(f"%{msg_id}%") if you want partial
+            q = q.filter(Message.message_id == msg_id)
+
+        if source:
+            q = q.filter(Message.source == source)
+
+        if start_dt:
+            q = q.filter(Message.publish_time >= start_dt)
+
+        if end_dt:
+            q = q.filter(Message.publish_time <= end_dt)
+
+        if dup in ("true", "false"):
+            q = q.filter(Message.is_duplicate == (dup == "true"))
+
+        # order newest first
+        q = q.order_by(Message.publish_time.desc())
+
+        # --- pagination ---
+        total = q.count()
+        items = (
+            q.offset((page - 1) * limit)
+             .limit(limit)
+             .all()
+        )
+
+        # shape for your React table
+        def to_dict(m: Message):
+            return {
+                "id": m.id,
+                "messageId": m.message_id,
+                "data": m.data,
+                "source": m.source,
+                "publishTime": m.publish_time.isoformat() if m.publish_time else None,
+                "is_duplicate": m.is_duplicate,
+            }
+
+        return jsonify({"items": [to_dict(m) for m in items], "total": total})
+
 
 
 # --- background poll launcher (ensures thread only starts once) ---
