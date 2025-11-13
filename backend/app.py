@@ -251,7 +251,7 @@ def publish_route():
             to_send.encode("utf-8"),
             **{k: str(v) for k, v in attrs.items()},
         )
-       msg_id = future.result(timeout=20)
+        msg_id = future.result(timeout=20)
 
 record = {
     "messageId": (attrs.get("messageId") if isinstance(attrs, dict) else None),
