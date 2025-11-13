@@ -10,8 +10,6 @@ from collections import deque
 import threading
 from datetime import datetime, timezone
 
-STORE = []
-
 # -----------------------------
 # Config via env
 # -----------------------------
@@ -25,6 +23,39 @@ if not CREDS_PATH:
     raise RuntimeError("GOOGLE_APPLICATION_CREDENTIALS env var not set")
 
 CREDS = service_account.Credentials.from_service_account_file(CREDS_PATH)
+
+# === Cloud SQL setup ===
+from google.cloud.sql.connector import Connector, IPTypes
+from sqlalchemy import create_engine, text
+import os
+
+DB_INSTANCE = os.getenv("DB_INSTANCE")
+DB_NAME     = os.getenv("DB_NAME", "appdb")
+DB_USER     = os.getenv("DB_USER", "appuser")
+DB_PASS     = os.getenv("DB_PASS")
+
+connector = Connector()
+
+def getconn():
+    return connector.connect(
+        DB_INSTANCE,
+        "pg8000",
+        user=DB_USER,
+        password=DB_PASS,
+        db=DB_NAME,
+        ip_type=IPTypes.PUBLIC  # Cloud SQL public IP
+    )
+
+engine = create_engine(
+    "postgresql+pg8000://",
+    creator=getconn,
+    pool_size=5,
+    max_overflow=5,
+    pool_pre_ping=True,
+    pool_recycle=1800,
+    pool_timeout=30,
+)
+
 
 def start_sync_poll_loop():
     sub = pubsub_v1.SubscriberClient(credentials=CREDS)
