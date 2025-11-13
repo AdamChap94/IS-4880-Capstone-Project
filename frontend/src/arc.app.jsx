@@ -71,60 +71,61 @@ function SenderPage({ brandBlue, brandGold }) {
   const [feedback, setFeedback] = useState("");
 
   const send = async () => {
-    if (!message.trim()) {
-      setFeedback("Message cannot be empty.");
+  if (!message.trim()) {
+    setFeedback("Message cannot be empty.");
+    return;
+  }
+  setLoading(true);
+  setFeedback("");
+
+  // fixed: no undefined `source`, no extra fetch
+  const body = {
+    message,
+    attributes: {
+      source: "ui", // hardcoded source for now
+      ...(messageId.trim() ? { messageId: messageId.trim() } : {}),
+    },
+  };
+
+  try {
+    // 15s client-side timeout so UI doesn't hang forever
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 15000);
+
+    const res = await fetch(`${API_BASE}/publish`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timer);
+
+    if (!res.ok) {
+      const errText = await res.text();
+      setFeedback(`Publish failed: ${errText}`);
       return;
     }
-    setLoading(true);
-    setFeedback("");
 
-    const body = {
-  message,
-  attributes: {
-    source: source || "ui",
-    ...(messageId.trim() ? { messageId: messageId.trim() } : {}),
-  },
+    const data = await res.json().catch(() => ({}));
+    setFeedback(
+      `Published${data?.messageId ? ` (id: ${data.messageId})` : ""}${
+        data?.profanity_masked ? " [masked]" : ""
+      }`
+    );
+    setMessage("");
+    setMessageId("");
+  } catch (e) {
+    setFeedback(
+      e?.name === "AbortError"
+        ? "Publish timed out. Please try again."
+        : "Network error while publishing."
+    );
+  } finally {
+    setLoading(false);
+  }
 };
-await fetch(`${API_BASE}/publish`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
 
-    try {
-      // 15s client-side timeout so UI doesn't hang forever
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 15000);
-
-      const res = await fetch(`${API_BASE}/publish`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-        signal: controller.signal,
-      });
-
-      clearTimeout(timer);
-
-      if (!res.ok) {
-        const errText = await res.text();
-        setFeedback(`Publish failed: ${errText}`);
-        return;
-      }
-
-      const data = await res.json().catch(() => ({}));
-      setFeedback(
-        `Published${data?.messageId ? ` (id: ${data.messageId})` : ""}${
-          data?.profanity_masked ? " [masked]" : ""
-        }`
-      );
-      setMessage("");
-      setMessageId("");
-    } catch (e) {
-      setFeedback(
-        e?.name === "AbortError"
-          ? "Publish timed out. Please try again."
-          : "Network error while publishing."
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <div
