@@ -79,12 +79,13 @@ function SenderPage({ brandBlue, brandGold }) {
     setFeedback("");
 
     const body = {
-      message: message.trim(),
-      attributes: {
-        source: "ui",
-        ...(messageId?.trim() ? { messageId: messageId.trim() } : {}),
-      },
-    };
+  message,
+  attributes: {
+    source: source || "ui",
+    ...(messageId.trim() ? { messageId: messageId.trim() } : {}),
+  },
+};
+await fetch(`${API_BASE}/publish`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
 
     try {
       // 15s client-side timeout so UI doesn't hang forever
