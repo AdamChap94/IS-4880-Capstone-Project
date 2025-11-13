@@ -529,37 +529,7 @@ def messages_debug():
         }, 200
     except Exception as e:
         return {"error": str(e)}, 500
-
-# GET alias so UI can call /api/messages
-@app.route("/api/messages", methods=["GET"])
-def api_messages_list():
-    try:
-        page = int(request.args.get("page", 1))
-        limit = int(request.args.get("limit", 10))
-    except ValueError:
-        page, limit = 1, 10
-    if page < 1: page = 1
-    if limit < 1: limit = 10
-
-    start = (page - 1) * limit
-    end = start + limit
-
-    with RECENT_LOCK:
-        items = list(RECENT)[start:end]
-        total = len(RECENT)
-
-    return jsonify({"items": items, "total": total, "page": page, "limit": limit}), 200
-
-
-# POST alias so UI can post to /api/messages if desired
-@app.route("/api/messages", methods=["POST"])
-def api_messages_publish():
-    return publish_route()
-
-        
-
-
-
+  
 # -----------------------------
 # Streaming pull
 # -----------------------------
