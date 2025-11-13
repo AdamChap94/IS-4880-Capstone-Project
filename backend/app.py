@@ -415,8 +415,8 @@ def list_messages():
     # NOTE: use client_message_id (your dedupe key) for "Message ID"
     if msg_id:
     # exact match on the client_message_id column
-    where.append("client_message_id = :msg_id")
-    params["msg_id"] = msg_id
+        where.append("client_message_id = :msg_id")
+        params["msg_id"] = msg_id
 
     if source:
         where.append("source = :source")
