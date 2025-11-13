@@ -203,7 +203,7 @@ function SenderPage({ brandBlue, brandGold }) {
             }}
             value={messageId}
             onChange={(e) => setMessageId(e.target.value)}
-            placeholder="example-001"
+            placeholder="e.g. Msg-001"
           />
         </div>
 
@@ -239,7 +239,6 @@ function SenderPage({ brandBlue, brandGold }) {
           checked={sendDuplicate}
           onChange={(e) => setSendDuplicate(e.target.checked)}
         />
-        Send a second identical message to test duplicate detection
       </label>
 
       <button
