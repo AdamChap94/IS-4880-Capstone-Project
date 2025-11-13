@@ -87,7 +87,6 @@ const send = async () => {
   };
 
   try {
-    // 15s client-side cap so the UI doesn't spin forever
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 15000);
 
@@ -123,6 +122,7 @@ const send = async () => {
     setLoading(false);
   }
 };
+
 
 
   try {
