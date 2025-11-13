@@ -281,137 +281,133 @@ def debug_pull_once():
 
 @app.route("/publish", methods=["POST"])
 def publish_route():
-    t0 = time.time()
     payload = request.get_json(silent=True) or {}
-
     raw = (payload.get("data") or payload.get("message") or "").strip()
     attrs = payload.get("attributes") or {}
     if not raw:
         return jsonify({"error": "message is required"}), 400
 
-    # profanity check + mask BEFORE publishing
+    # client-provided dedupe key (from the Sender page input)
+    client_id = (attrs.get("messageId") or "").strip() or None
+    source = (attrs.get("source") or "").strip() or None
+
+    # profanity handling
     flagged = contains_bad(raw)
     to_send = mask_text(raw) if flagged else raw
 
-    # Publish to Pub/Sub (wait briefly, but don't block the request forever)
-    pub_id = None
-    try:
-        future = publisher.publish(
-            topic_path,
-            to_send.encode("utf-8"),
-            **{k: str(v) for k, v in attrs.items()},
-        )
-        try:
-            pub_id = future.result(timeout=5)  # was 20; keep this snappy
-        except Exception as e:
-            app.logger.warning("Publish not confirmed within 5s (continuing): %s", e)
-    except Exception as e:
-        app.logger.exception("Publish failed before future: %s", e)
-        return jsonify({"error": f"publish failed: {e}"}), 500
+    # publish to Pub/Sub (also pass through attributes for traceability)
+    pub_attrs = {k: str(v) for k, v in attrs.items()}
+    future = publisher.publish(
+        topic_path,
+        to_send.encode("utf-8"),
+        **pub_attrs,
+    )
+    pubsub_id = future.result(timeout=20)
 
-    t_pub = time.time()
-
-    # Persist to DB regardless (use publish_time=NOW)
-    record = {
-        "message_id": attrs.get("messageId") or pub_id,
-        "data": to_send,
-        "source": attrs.get("source"),
-        "attributes": json.dumps(attrs),
-        "is_duplicate": False,
-    }
+    # persist to Postgres, upsert on client_message_id so duplicates flip the flag
     try:
         with engine.begin() as conn:
-            conn.execute(text("""
-                INSERT INTO messages (message_id, data, source, attributes, is_duplicate)
-                VALUES (:message_id, :data, :source, :attributes, :is_duplicate)
-            """), record)
-    except Exception as e:
-        app.logger.exception("DB insert failed: %s", e)
-        # Still return success for UX; surface DB error in payload
+            if client_id:
+                result = conn.execute(text("""
+                    INSERT INTO messages (
+                        client_message_id, pubsub_message_id, data, source, attributes, publish_time, is_duplicate
+                    )
+                    VALUES (
+                        :client_message_id, :pubsub_message_id, :data, :source, CAST(:attributes AS JSONB), NOW(), FALSE
+                    )
+                    ON CONFLICT (client_message_id)
+                    DO UPDATE SET
+                        is_duplicate = TRUE,
+                        publish_time = EXCLUDED.publish_time
+                    RETURNING id, is_duplicate
+                """), {
+                    "client_message_id": client_id,
+                    "pubsub_message_id": pubsub_id,
+                    "data": to_send,
+                    "source": source,
+                    "attributes": json.dumps(attrs),
+                })
+            else:
+                # no client_id provided → insert normally (no dedupe)
+                result = conn.execute(text("""
+                    INSERT INTO messages (
+                        client_message_id, pubsub_message_id, data, source, attributes, publish_time, is_duplicate
+                    )
+                    VALUES (
+                        NULL, :pubsub_message_id, :data, :source, CAST(:attributes AS JSONB), NOW(), FALSE
+                    )
+                    RETURNING id, is_duplicate
+                """), {
+                    "pubsub_message_id": pubsub_id,
+                    "data": to_send,
+                    "source": source,
+                    "attributes": json.dumps(attrs),
+                })
+
+            row = result.first()
+            row_id = row.id if row else None
+            is_dup = bool(row.is_duplicate) if row else False
+
         return jsonify({
-            "status": "published",
-            "messageId": pub_id or attrs.get("messageId") or "pending",
-            "profanity_masked": bool(flagged),
-            "db_error": str(e),
+            "ok": True,
+            "flagged": flagged,
+            "pubsub_message_id": pubsub_id,   # assigned by Pub/Sub
+            "client_message_id": client_id,   # your dedupe key
+            "row_id": row_id,
+            "is_duplicate": is_dup,
+            "data": to_send
         }), 200
 
-    t_db = time.time()
-    app.logger.info(
-        "Publish route timings: total=%.3fs pub=%.3fs db=%.3fs",
-        t_db - t0, t_pub - t0, t_db - t_pub
-    )
+    except Exception as e:
+        app.logger.exception("DB insert/upsert failed")
+        return jsonify({"error": "db_error", "detail": str(e)}), 500
 
-    return jsonify({
-        "status": "published",
-        "messageId": pub_id or attrs.get("messageId") or "pending",
-        "profanity_masked": bool(flagged),
-    }), 200
 
 
 
 @app.route("/api/messages", methods=["GET"])
 def api_messages_list():
-    # query params
-    page = max(int(request.args.get("page", 1) or 1), 1)
-    limit = max(int(request.args.get("limit", 10) or 10), 1)
-
-    message_id = (request.args.get("messageId") or "").strip()
-    source = (request.args.get("source") or "").strip()
-    start = (request.args.get("start") or "").strip()    # ISO or 'YYYY-MM-DDTHH:MM'
-    end   = (request.args.get("end") or "").strip()
-    dup   = (request.args.get("is_duplicate") or "").strip().lower()  # "true"/"false" or ""
-
-    # build WHERE dynamically
-    clauses = []
-    params = {}
-    if message_id:
-        clauses.append("message_id = :message_id")
-        params["message_id"] = message_id
-    if source:
-        clauses.append("COALESCE(source, '') ILIKE :source")
-        params["source"] = f"%{source}%"
-    if start:
-        clauses.append("publish_time >= :start")
-        params["start"] = start
-    if end:
-        clauses.append("publish_time <= :end")
-        params["end"] = end
-    if dup in ("true", "false"):
-        clauses.append("is_duplicate = :dup")
-        params["dup"] = (dup == "true")
-
-    where_sql = ("WHERE " + " AND ".join(clauses)) if clauses else ""
+    try:
+        page = max(int(request.args.get("page", 1)), 1)
+        limit = max(min(int(request.args.get("limit", 10)), 200), 1)
+    except ValueError:
+        page, limit = 1, 10
     offset = (page - 1) * limit
 
+    # Basic list with total count
     with engine.begin() as conn:
-        total = conn.execute(
-            text(f"SELECT COUNT(*) FROM messages {where_sql}")
-        , params).scalar_one()
+        total = conn.execute(text("SELECT COUNT(*) FROM messages")).scalar() or 0
 
-        rows = conn.execute(
-            text(f"""
-                SELECT message_id, data, source, attributes, publish_time, is_duplicate
-                FROM messages
-                {where_sql}
-                ORDER BY publish_time DESC
-                LIMIT :limit OFFSET :offset
-            """),
-            {**params, "limit": limit, "offset": offset}
-        ).mappings().all()
+        rows = conn.execute(text("""
+            SELECT
+                id,
+                client_message_id AS "messageId",
+                pubsub_message_id,
+                data,
+                source,
+                attributes,
+                publish_time,
+                is_duplicate
+            FROM messages
+            ORDER BY id DESC
+            LIMIT :limit OFFSET :offset
+        """), {"limit": limit, "offset": offset}).mappings().all()
 
-    # map to the shape your frontend expects
-    items = []
-    for r in rows:
-        attrs = r["attributes"] if isinstance(r["attributes"], dict) else json.loads(r["attributes"] or "{}")
-        items.append({
-            "messageId": r["message_id"],
-            "data": r["data"],
-            "attributes": {"source": r["source"], **attrs} if r["source"] else attrs,
-            "publishTime": r["publish_time"].isoformat() if hasattr(r["publish_time"], "isoformat") else str(r["publish_time"]),
-            "is_duplicate": bool(r["is_duplicate"]),
-        })
+        # Normalize output for UI
+        data = []
+        for r in rows:
+            data.append({
+                "id": r["id"],
+                "messageId": r["messageId"],                 # the dedupe key you control
+                "pubsubMessageId": r["pubsub_message_id"],   # optional: if you want to show it
+                "data": r["data"],
+                "source": r["source"],
+                "attributes": r["attributes"],
+                "publishTime": r["publish_time"].isoformat() if r["publish_time"] else None,
+                "is_duplicate": bool(r["is_duplicate"]),
+            })
 
-    return jsonify({"items": items, "total": total, "page": page, "limit": limit}), 200
+    return jsonify({"ok": True, "data": data, "total": total}), 200
 
 
 # --- background poll launcher (ensures thread only starts once) ---
