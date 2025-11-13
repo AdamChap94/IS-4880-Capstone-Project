@@ -67,65 +67,87 @@ export default function App() {
 function SenderPage({ brandBlue, brandGold }) {
   const [message, setMessage] = useState("");
   const [messageId, setMessageId] = useState("");
+  const [source, setSource] = useState("ui");
+  const [sendDuplicate, setSendDuplicate] = useState(false);
+
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState("");
 
   const send = async () => {
-  if (!message.trim()) {
-    setFeedback("Message cannot be empty.");
-    return;
-  }
-  setLoading(true);
-  setFeedback("");
-
-  // fixed: no undefined `source`, no extra fetch
-  const body = {
-    message,
-    attributes: {
-      source: "ui", // hardcoded source for now
-      ...(messageId.trim() ? { messageId: messageId.trim() } : {}),
-    },
-  };
-
-  try {
-    // 15s client-side timeout so UI doesn't hang forever
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 15000);
-
-    const res = await fetch(`${API_BASE}/publish`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-      signal: controller.signal,
-    });
-
-    clearTimeout(timer);
-
-    if (!res.ok) {
-      const errText = await res.text();
-      setFeedback(`Publish failed: ${errText}`);
+    if (!message.trim()) {
+      setFeedback("Message cannot be empty.");
       return;
     }
 
-    const data = await res.json().catch(() => ({}));
-    setFeedback(
-      `Published${data?.messageId ? ` (id: ${data.messageId})` : ""}${
-        data?.profanity_masked ? " [masked]" : ""
-      }`
-    );
-    setMessage("");
-    setMessageId("");
-  } catch (e) {
-    setFeedback(
-      e?.name === "AbortError"
-        ? "Publish timed out. Please try again."
-        : "Network error while publishing."
-    );
-  } finally {
-    setLoading(false);
-  }
-};
+    setLoading(true);
+    setFeedback("");
 
+    const baseAttributes = {
+      source: source || "ui",
+      ...(messageId.trim() ? { messageId: messageId.trim() } : {}),
+    };
+
+    const publishOnce = async (attributes) => {
+      const body = {
+        message,
+        attributes,
+      };
+
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 15000);
+
+      try {
+        const res = await fetch(`${API_BASE}/publish`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+          signal: controller.signal,
+        });
+
+        clearTimeout(timer);
+
+        if (!res.ok) {
+          const errText = await res.text();
+          throw new Error(`Publish failed: ${errText}`);
+        }
+
+        const data = await res.json().catch(() => ({}));
+        return data;
+      } catch (e) {
+        clearTimeout(timer);
+        throw e;
+      }
+    };
+
+    try {
+      const data1 = await publishOnce(baseAttributes);
+
+      let data2 = null;
+      if (sendDuplicate) {
+        data2 = await publishOnce(baseAttributes);
+      }
+
+      const idPart = data1?.messageId || messageId.trim() || "";
+      const dupPart = sendDuplicate ? " Duplicate copy sent for detection." : "";
+
+      setFeedback(
+        `Published${idPart ? ` (id: ${idPart})` : ""}${
+          data1?.profanity_masked ? " [masked]" : ""
+        }${dupPart}`
+      );
+
+      setMessage("");
+      setMessageId("");
+    } catch (e) {
+      setFeedback(
+        e?.name === "AbortError"
+          ? "Publish timed out. Please try again."
+          : e?.message || "Network error while publishing."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div
@@ -181,10 +203,44 @@ function SenderPage({ brandBlue, brandGold }) {
             }}
             value={messageId}
             onChange={(e) => setMessageId(e.target.value)}
-            placeholder="example 001"
+            placeholder="example-001"
+          />
+        </div>
+
+        <div style={{ flex: 1 }}>
+          <label style={{ display: "block", fontSize: 13, marginBottom: 4 }}>
+            Source
+          </label>
+          <input
+            style={{
+              width: "100%",
+              padding: 8,
+              borderRadius: 6,
+              border: "1px solid #cbd5f5",
+            }}
+            value={source}
+            onChange={(e) => setSource(e.target.value)}
+            placeholder="ui"
           />
         </div>
       </div>
+
+      <label
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          marginBottom: 12,
+          fontSize: 13,
+        }}
+      >
+        <input
+          type="checkbox"
+          checked={sendDuplicate}
+          onChange={(e) => setSendDuplicate(e.target.checked)}
+        />
+        Send a second identical message to test duplicate detection
+      </label>
 
       <button
         onClick={send}
@@ -208,20 +264,16 @@ function SenderPage({ brandBlue, brandGold }) {
   );
 }
 
-
 function ReceiverPage({ brandBlue, brandGold }) {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // pagination
   const [page, setPage] = useState(1);
   const pageSize = 10;
   const [total, setTotal] = useState(0);
 
-  // auto refresh
   const [autoRefresh, setAutoRefresh] = useState(true);
 
-  // filters 
   const [filterMessageId, setFilterMessageId] = useState("");
   const [filterSource, setFilterSource] = useState("");
   const [filterStart, setFilterStart] = useState("");
@@ -250,7 +302,6 @@ function ReceiverPage({ brandBlue, brandGold }) {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
 
-      // Normalize various shapes to [{...}]
       let items = [];
       if (data && Array.isArray(data.items)) {
         items = data.items;
@@ -311,9 +362,16 @@ function ReceiverPage({ brandBlue, brandGold }) {
       >
         Receiver page
       </h2>
-      <p style={{ color: "#475569", fontSize: 14, marginBottom: 16 }}>
+      <p style={{ color: "#475569", fontSize: 14, marginBottom: 8 }}>
         View messages stored in the database. Use filters to search by attributes.
       </p>
+
+      {/* subtle "refreshing" indicator */}
+      {loading && (
+        <p style={{ fontSize: 12, color: "#64748b", marginTop: 0, marginBottom: 8 }}>
+          Refreshing messages...
+        </p>
+      )}
 
       {/* Filters */}
       <div
@@ -424,10 +482,8 @@ function ReceiverPage({ brandBlue, brandGold }) {
         </label>
       </div>
 
-      {/* Messages table */}
-      {loading ? (
-        <p>Loading messages...</p>
-      ) : messages.length === 0 ? (
+      {/* Messages table - no more flashing between "Loading" and table */}
+      {messages.length === 0 ? (
         <p>No messages found.</p>
       ) : (
         <div style={{ overflowX: "auto" }}>
@@ -545,3 +601,4 @@ const tdStyle = {
   padding: "6px 6px",
   borderBottom: "1px solid #e2e8f0",
 };
+
