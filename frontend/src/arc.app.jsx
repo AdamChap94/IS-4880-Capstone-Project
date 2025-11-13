@@ -387,7 +387,7 @@ function ReceiverPage({ brandBlue, brandGold }) {
             cursor: "pointer",
           }}
         >
-          Clear
+          Clear Search
         </button>
         <label style={{ marginLeft: "auto", fontSize: 13, color: brandBlue }}>
           <input
