@@ -66,10 +66,11 @@ export default function App() {
 
 function SenderPage({ brandBlue, brandGold }) {
   const [message, setMessage] = useState("");
+  const [messageId, setMessageId] = useState("");
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState("");
 
-  async function send() {
+  const send = async () => {
     if (!message.trim()) {
       setFeedback("Message cannot be empty.");
       return;
@@ -77,11 +78,14 @@ function SenderPage({ brandBlue, brandGold }) {
     setLoading(true);
     setFeedback("");
     try {
-      // Correct endpoint + shape expected by backend
+      // include messageId in attributes if provided
+      const body = { data: message, attributes: {} };
+      if (messageId.trim()) body.attributes.messageId = messageId.trim();
+
       const res = await fetch(`${API_BASE}/api/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ data: message }),
+        body: JSON.stringify(body),
       });
 
       if (!res.ok) {
@@ -90,13 +94,14 @@ function SenderPage({ brandBlue, brandGold }) {
       } else {
         setFeedback("Message published.");
         setMessage("");
+        setMessageId("");
       }
-    } catch {
+    } catch (err) {
       setFeedback("Network error while publishing.");
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   return (
     <div
@@ -118,7 +123,7 @@ function SenderPage({ brandBlue, brandGold }) {
         Sender page
       </h2>
       <p style={{ color: "#475569", fontSize: 14 }}>
-        This page publishes messages to the backend (with profanity masking).
+        This page is for publishing messages to the Pub/Sub topic through the backend.
       </p>
 
       <label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
@@ -137,6 +142,26 @@ function SenderPage({ brandBlue, brandGold }) {
         value={message}
         onChange={(e) => setMessage(e.target.value)}
       />
+
+      {/* Message ID input */}
+      <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
+        <div style={{ flex: 1 }}>
+          <label style={{ display: "block", fontSize: 13, marginBottom: 4 }}>
+            Message ID (optional, for duplicate detection)
+          </label>
+          <input
+            style={{
+              width: "100%",
+              padding: 8,
+              borderRadius: 6,
+              border: "1px solid #cbd5f5",
+            }}
+            value={messageId}
+            onChange={(e) => setMessageId(e.target.value)}
+            placeholder="e.g. msg-001"
+          />
+        </div>
+      </div>
 
       <button
         onClick={send}
