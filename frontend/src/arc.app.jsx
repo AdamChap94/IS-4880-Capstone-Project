@@ -82,11 +82,12 @@ function SenderPage({ brandBlue, brandGold }) {
       const body = { data: message, attributes: {} };
       if (messageId.trim()) body.attributes.messageId = messageId.trim();
 
-      const res = await fetch(`${API_BASE}/api/messages`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
+      const res = await fetch(`${API_BASE}/publish`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(body),
+});
+
 
       if (!res.ok) {
         const errText = await res.text();
