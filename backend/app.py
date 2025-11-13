@@ -402,14 +402,19 @@ def list_messages():
         limit = int(request.args.get("limit", "10"))
     except ValueError:
         limit = 10
+    if page < 1:
+        page = 1
+    if limit < 1 or limit > 100:
+        limit = 10
     offset = (page - 1) * limit
 
-    # build WHERE clauses dynamically
+    # --- build WHERE clauses dynamically ---
     where = []
-    params = {}
+    params: dict[str, object] = {}
 
+    # NOTE: use client_message_id (your dedupe key) for "Message ID"
     if msg_id:
-        where.append("message_id = :msg_id")
+        where.append("client_message_id = :msg_id")
         params["msg_id"] = msg_id
 
     if source:
@@ -418,7 +423,7 @@ def list_messages():
 
     if start:
         where.append("publish_time >= :start")
-        params["start"] = start
+        params["start"] = start  # ISO string works for timestamptz
 
     if end:
         where.append("publish_time <= :end")
@@ -433,7 +438,13 @@ def list_messages():
         where_sql = "WHERE " + " AND ".join(where)
 
     query_items = f"""
-        SELECT id, message_id, data, source, publish_time, is_duplicate
+        SELECT
+            id,
+            client_message_id,
+            data,
+            source,
+            publish_time,
+            is_duplicate
         FROM messages
         {where_sql}
         ORDER BY publish_time DESC
@@ -451,16 +462,18 @@ def list_messages():
 
     with engine.begin() as conn:
         rows = conn.execute(text(query_items), params).fetchall()
-        total = conn.execute(text(query_count), params).scalar()
+        total = conn.execute(text(query_count), params).scalar() or 0
 
+    # Shape rows for your React table
     items = []
     for r in rows:
         items.append({
             "id": r.id,
-            "messageId": r.message_id,
+            # frontend expects "messageId" – use client_message_id
+            "messageId": getattr(r, "client_message_id", None),
             "data": r.data,
             "source": r.source,
-            "publishTime": r.publish_time.isoformat(),
+            "publishTime": r.publish_time.isoformat() if r.publish_time else None,
             "is_duplicate": bool(r.is_duplicate),
         })
 
