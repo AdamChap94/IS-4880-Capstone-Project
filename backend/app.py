@@ -392,6 +392,7 @@ def list_messages():
     start  = request.args.get("start", "").strip()
     end    = request.args.get("end", "").strip()
     dup    = request.args.get("is_duplicate", "").strip().lower()
+    text_q = request.args.get("text", "").strip()  # NEW: message text search
 
     # pagination
     try:
@@ -402,6 +403,7 @@ def list_messages():
         limit = int(request.args.get("limit", "10"))
     except ValueError:
         limit = 10
+
     if page < 1:
         page = 1
     if limit < 1 or limit > 100:
@@ -421,6 +423,12 @@ def list_messages():
         if source:
             where.append("source = :source")
             params["source"] = source
+
+    # ✅ NEW: case-insensitive partial search on message body
+    if text_q:
+        # e.g. text="chi" matches "chicken", "Chili", etc.
+        where.append("data ILIKE :text_q")
+        params["text_q"] = f"%{text_q}%"
 
     if start:
         where.append("publish_time >= :start")
@@ -479,6 +487,7 @@ def list_messages():
         })
 
     return jsonify({"items": items, "total": total})
+
 
 
 
