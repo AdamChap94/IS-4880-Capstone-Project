@@ -227,6 +227,7 @@ function ReceiverPage({ brandBlue, brandGold }) {
   const [filterStart, setFilterStart] = useState("");
   const [filterEnd, setFilterEnd] = useState("");
   const [filterDuplicate, setFilterDuplicate] = useState("");
+  const [filterText, setFilterText] = useState(""); // NEW: message text filter
 
   const lightGray = "#F3F4F6";
 
@@ -237,10 +238,13 @@ function ReceiverPage({ brandBlue, brandGold }) {
     if (filterStart.trim()) params.append("start", filterStart.trim());
     if (filterEnd.trim()) params.append("end", filterEnd.trim());
     if (filterDuplicate) params.append("is_duplicate", filterDuplicate);
+    if (filterText.trim()) params.append("text", filterText.trim()); // NEW: text search
     params.append("page", page);
     params.append("limit", pageSize);
     return `?${params.toString()}`;
   }
+
+
 
   async function load() {
     setLoading(true);
@@ -281,15 +285,17 @@ function ReceiverPage({ brandBlue, brandGold }) {
     }
   }, [page, autoRefresh]); // eslint-disable-line
 
-  function clearFilters() {
+    function clearFilters() {
     setFilterMessageId("");
     setFilterSource("");
     setFilterStart("");
     setFilterEnd("");
     setFilterDuplicate("");
+    setFilterText(""); // clear message text filter too
     setPage(1);
     load();
   }
+
 
   return (
     <div
@@ -320,7 +326,7 @@ function ReceiverPage({ brandBlue, brandGold }) {
         </p>
       )}
 
-      {/* Filters */}
+           {/* Filters */}
       <div
         style={{
           display: "grid",
@@ -349,6 +355,17 @@ function ReceiverPage({ brandBlue, brandGold }) {
             onChange={(e) => setFilterSource(e.target.value)}
             style={{ width: "100%", padding: 6, borderRadius: 6, border: "1px solid #cbd5f5" }}
             placeholder="ui"
+          />
+        </div>
+        <div>
+          <label style={{ display: "block", fontSize: 13, marginBottom: 4 }}>
+            Message text
+          </label>
+          <input
+            value={filterText}
+            onChange={(e) => setFilterText(e.target.value)}
+            style={{ width: "100%", padding: 6, borderRadius: 6, border: "1px solid #cbd5f5" }}
+            placeholder="Full or partial text…"
           />
         </div>
         <div>
@@ -388,6 +405,7 @@ function ReceiverPage({ brandBlue, brandGold }) {
           </select>
         </div>
       </div>
+
 
       <div style={{ display: "flex", gap: 8, marginBottom: 16, alignItems: "center" }}>
         <button
