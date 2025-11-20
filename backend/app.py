@@ -71,7 +71,8 @@ with engine.begin() as conn:
         );
     """))
     # helpful index for lookups by message_id
-    conn.execute(text("CREATE INDEX IF NOT EXISTS idx_messages_message_id ON messages(message_id);"))
+    CREATE INDEX IF NOT EXISTS idx_messages_client_message_id
+ON messages(client_message_id);
     conn.execute(text("CREATE INDEX IF NOT EXISTS idx_messages_publish_time ON messages(publish_time DESC);"))
 
 
