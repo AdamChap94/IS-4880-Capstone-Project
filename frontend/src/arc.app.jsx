@@ -9,13 +9,48 @@ export default function App() {
   const brandGold = "#FFC72C";
 
   return (
-    <div style={{ minHeight: "100vh", background: "#f5f5f5" }}>
+    <div
+      style={{
+        minHeight: "100vh",
+        background: "linear-gradient(to bottom right, #ffffff, #eef2f7)",
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
+      {/* Global styles for animations and hover effects */}
+      <style>{`
+        .fade-in {
+          animation: fadeIn 0.25s ease-in-out;
+        }
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(4px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        .table-row:hover {
+          background-color: #e8eef7 !important;
+        }
+
+        .btn-hover {
+          transition: transform 0.1s ease, box-shadow 0.2s ease;
+        }
+        .btn-hover:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }
+      `}</style>
+
       <header
         style={{
           background: brandBlue,
           color: "#fff",
           padding: "16px 24px",
-          marginBottom: 16,
           borderBottom: `4px solid ${brandGold}`,
         }}
       >
@@ -23,17 +58,26 @@ export default function App() {
         <p style={{ margin: 0, fontSize: 12 }}>Publisher and Consumer pages</p>
       </header>
 
-      <div style={{ maxWidth: 900, margin: "0 auto", padding: "0 16px 48px" }}>
+      <div
+        style={{
+          maxWidth: 900,
+          margin: "24px auto 32px",
+          padding: "0 16px",
+          width: "100%",
+          flex: 1,
+        }}
+      >
         {/* Tabs */}
         <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
           <button
             onClick={() => setView("send")}
+            className="btn-hover"
             style={{
               padding: "8px 16px",
               background: view === "send" ? brandBlue : "#e2e8f0",
               color: view === "send" ? "#fff" : "#000",
               border: "none",
-              borderRadius: 6,
+              borderRadius: 999,
               cursor: "pointer",
             }}
           >
@@ -41,12 +85,13 @@ export default function App() {
           </button>
           <button
             onClick={() => setView("receive")}
+            className="btn-hover"
             style={{
               padding: "8px 16px",
               background: view === "receive" ? brandBlue : "#e2e8f0",
               color: view === "receive" ? "#fff" : "#000",
               border: "none",
-              borderRadius: 6,
+              borderRadius: 999,
               cursor: "pointer",
             }}
           >
@@ -55,11 +100,30 @@ export default function App() {
         </div>
 
         {view === "send" ? (
-          <SenderPage brandBlue={brandBlue} brandGold={brandGold} />
+          <SenderPage
+            brandBlue={brandBlue}
+            brandGold={brandGold}
+          />
         ) : (
-          <ReceiverPage brandBlue={brandBlue} brandGold={brandGold} />
+          <ReceiverPage
+            brandBlue={brandBlue}
+            brandGold={brandGold}
+          />
         )}
       </div>
+
+      <footer
+        style={{
+          background: brandBlue,
+          color: "#fff",
+          textAlign: "center",
+          padding: "10px 0",
+          borderTop: `4px solid ${brandGold}`,
+          fontSize: 12,
+        }}
+      >
+        Group 5 Messaging Provider © {new Date().getFullYear()}
+      </footer>
     </div>
   );
 }
@@ -130,11 +194,12 @@ function SenderPage({ brandBlue, brandGold }) {
 
   return (
     <div
+      className="fade-in"
       style={{
         background: "#fff",
-        padding: 16,
-        borderRadius: 8,
-        boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
+        padding: 20,
+        borderRadius: 12,
+        boxShadow: "0 4px 12px rgba(15,23,42,0.08)",
       }}
     >
       <h2
@@ -147,7 +212,7 @@ function SenderPage({ brandBlue, brandGold }) {
       >
         Sender page
       </h2>
-      <p style={{ color: "#475569", fontSize: 14 }}>
+      <p style={{ color: "#475569", fontSize: 14, marginTop: 8 }}>
         This page is for publishing messages to the Pub/Sub topic through the backend.
       </p>
 
@@ -159,12 +224,13 @@ function SenderPage({ brandBlue, brandGold }) {
           width: "100%",
           height: 120,
           padding: 8,
-          borderRadius: 6,
+          borderRadius: 8,
           border: "1px solid #cbd5f5",
           marginBottom: 12,
           resize: "none",
           overflowY: "auto",
           boxSizing: "border-box",
+          fontSize: 14,
         }}
         placeholder="Type a message."
         value={message}
@@ -180,8 +246,9 @@ function SenderPage({ brandBlue, brandGold }) {
             style={{
               width: "100%",
               padding: 8,
-              borderRadius: 6,
+              borderRadius: 8,
               border: "1px solid #cbd5f5",
+              fontSize: 14,
             }}
             value={messageId}
             onChange={(e) => setMessageId(e.target.value)}
@@ -193,13 +260,15 @@ function SenderPage({ brandBlue, brandGold }) {
       <button
         onClick={send}
         disabled={loading}
+        className="btn-hover"
         style={{
           background: brandBlue,
           color: "#fff",
           border: "none",
-          padding: "8px 16px",
-          borderRadius: 6,
+          padding: "8px 18px",
+          borderRadius: 999,
           cursor: "pointer",
+          fontSize: 14,
         }}
       >
         {loading ? "Sending..." : "Send message"}
@@ -212,7 +281,6 @@ function SenderPage({ brandBlue, brandGold }) {
   );
 }
 
-// helper to format publish time as "YYYY-MM-DD HH:MM" from ISO-like strings
 function formatPublishTime(value) {
   if (!value) return "";
   if (typeof value === "string" && value.includes("T")) {
@@ -240,9 +308,9 @@ function ReceiverPage({ brandBlue, brandGold }) {
   // filters
   const [filterMessageId, setFilterMessageId] = useState("");
   const [filterSource, setFilterSource] = useState("");
-  const [filterPublishAt, setFilterPublishAt] = useState(""); // single publish date/time filter
+  const [filterPublishAt, setFilterPublishAt] = useState(""); 
   const [filterDuplicate, setFilterDuplicate] = useState("");
-  const [filterText, setFilterText] = useState(""); // message text filter
+  const [filterText, setFilterText] = useState(""); 
 
   const lightGray = "#F3F4F6";
 
@@ -296,7 +364,7 @@ function ReceiverPage({ brandBlue, brandGold }) {
       const id = setInterval(load, 10000);
       return () => clearInterval(id);
     }
-  }, [page, autoRefresh]); // eslint-disable-line
+  }, [page, autoRefresh]); 
 
   function clearFilters() {
     setFilterMessageId("");
@@ -310,11 +378,12 @@ function ReceiverPage({ brandBlue, brandGold }) {
 
   return (
     <div
+      className="fade-in"
       style={{
         background: "#fff",
-        padding: 16,
-        borderRadius: 8,
-        boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
+        padding: 20,
+        borderRadius: 12,
+        boxShadow: "0 4px 12px rgba(15,23,42,0.08)",
       }}
     >
       <h2
@@ -331,6 +400,11 @@ function ReceiverPage({ brandBlue, brandGold }) {
         View messages stored in the database. Use filters to search by attributes.
       </p>
 
+      {loading && (
+        <p style={{ fontSize: 12, color: "#64748b", marginTop: 0, marginBottom: 8 }}>
+          Refreshing messages...
+        </p>
+      )}
 
       {/* Filters */}
       <div
@@ -338,7 +412,7 @@ function ReceiverPage({ brandBlue, brandGold }) {
           display: "grid",
           gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
           gap: 12,
-          marginBottom: 16,
+          marginBottom: 12,
         }}
       >
         <div>
@@ -348,7 +422,13 @@ function ReceiverPage({ brandBlue, brandGold }) {
           <input
             value={filterMessageId}
             onChange={(e) => setFilterMessageId(e.target.value)}
-            style={{ width: "100%", padding: 6, borderRadius: 6, border: "1px solid #cbd5f5" }}
+            style={{
+              width: "100%",
+              padding: 6,
+              borderRadius: 8,
+              border: "1px solid #cbd5f5",
+              fontSize: 13,
+            }}
             placeholder=""
           />
         </div>
@@ -359,7 +439,13 @@ function ReceiverPage({ brandBlue, brandGold }) {
           <input
             value={filterSource}
             onChange={(e) => setFilterSource(e.target.value)}
-            style={{ width: "100%", padding: 6, borderRadius: 6, border: "1px solid #cbd5f5" }}
+            style={{
+              width: "100%",
+              padding: 6,
+              borderRadius: 8,
+              border: "1px solid #cbd5f5",
+              fontSize: 13,
+            }}
             placeholder="ui"
           />
         </div>
@@ -370,19 +456,31 @@ function ReceiverPage({ brandBlue, brandGold }) {
           <input
             value={filterText}
             onChange={(e) => setFilterText(e.target.value)}
-            style={{ width: "100%", padding: 6, borderRadius: 6, border: "1px solid #cbd5f5" }}
+            style={{
+              width: "100%",
+              padding: 6,
+              borderRadius: 8,
+              border: "1px solid #cbd5f5",
+              fontSize: 13,
+            }}
             placeholder="Full or partial text…"
           />
         </div>
         <div>
           <label style={{ display: "block", fontSize: 13, marginBottom: 4 }}>
-            Publish date & time
+            Publish date and time (24-hour)
           </label>
           <input
             type="datetime-local"
             value={filterPublishAt}
             onChange={(e) => setFilterPublishAt(e.target.value)}
-            style={{ width: "100%", padding: 6, borderRadius: 6, border: "1px solid #cbd5f5" }}
+            style={{
+              width: "100%",
+              padding: 6,
+              borderRadius: 8,
+              border: "1px solid #cbd5f5",
+              fontSize: 13,
+            }}
           />
         </div>
         <div>
@@ -392,7 +490,13 @@ function ReceiverPage({ brandBlue, brandGold }) {
           <select
             value={filterDuplicate}
             onChange={(e) => setFilterDuplicate(e.target.value)}
-            style={{ width: "100%", padding: 6, borderRadius: 6, border: "1px solid #cbd5f5" }}
+            style={{
+              width: "100%",
+              padding: 6,
+              borderRadius: 8,
+              border: "1px solid #cbd5f5",
+              fontSize: 13,
+            }}
           >
             <option value="">T/F</option>
             <option value="true">True</option>
@@ -401,34 +505,46 @@ function ReceiverPage({ brandBlue, brandGold }) {
         </div>
       </div>
 
+      <hr
+        style={{
+          border: "none",
+          borderTop: "1px solid #e5e7eb",
+          margin: "4px 0 12px",
+        }}
+      />
+
       <div style={{ display: "flex", gap: 8, marginBottom: 16, alignItems: "center" }}>
         <button
           onClick={() => {
             setPage(1);
             load();
           }}
+          className="btn-hover"
           style={{
             background: brandBlue,
             color: "#fff",
             border: "none",
-            padding: "6px 14px",
-            borderRadius: 6,
+            padding: "6px 16px",
+            borderRadius: 999,
             cursor: "pointer",
+            fontSize: 13,
           }}
         >
           Search
         </button>
         <button
           onClick={clearFilters}
+          className="btn-hover"
           style={{
             background: "#e2e8f0",
             border: "none",
-            padding: "6px 14px",
-            borderRadius: 6,
+            padding: "6px 16px",
+            borderRadius: 999,
             cursor: "pointer",
+            fontSize: 13,
           }}
         >
-          Clear Search
+          Clear search
         </button>
         <label style={{ marginLeft: "auto", fontSize: 13, color: brandBlue }}>
           <input
@@ -473,6 +589,7 @@ function ReceiverPage({ brandBlue, brandGold }) {
                 return (
                   <tr
                     key={m.messageId || m.id || idx}
+                    className="table-row"
                     style={{ background: idx % 2 === 0 ? "#fff" : lightGray }}
                   >
                     <td style={tdStyle}>{m.messageId || m.id || "N/A"}</td>
@@ -485,14 +602,34 @@ function ReceiverPage({ brandBlue, brandGold }) {
                         ""}
                     </td>
                     <td style={tdStyle}>{formatPublishTime(rawTime)}</td>
-                    <td
-                      style={{
-                        ...tdStyle,
-                        fontWeight: isDup ? 700 : 400,
-                        color: isDup ? "#b91c1c" : brandBlue,
-                      }}
-                    >
-                      {isDup ? "True" : "False"}
+                    <td style={tdStyle}>
+                      {isDup ? (
+                        <span
+                          style={{
+                            background: "#fee2e2",
+                            color: "#b91c1c",
+                            padding: "2px 6px",
+                            borderRadius: 6,
+                            fontWeight: 600,
+                            fontSize: 12,
+                          }}
+                        >
+                          Duplicate
+                        </span>
+                      ) : (
+                        <span
+                          style={{
+                            background: "#e0f2fe",
+                            color: brandBlue,
+                            padding: "2px 6px",
+                            borderRadius: 6,
+                            fontWeight: 500,
+                            fontSize: 12,
+                          }}
+                        >
+                          Unique
+                        </span>
+                      )}
                     </td>
                   </tr>
                 );
@@ -516,14 +653,16 @@ function ReceiverPage({ brandBlue, brandGold }) {
           <button
             disabled={page === 1}
             onClick={() => setPage(page - 1)}
+            className="btn-hover"
             style={{
               background: brandBlue,
               color: "#fff",
               border: "none",
-              borderRadius: 6,
+              borderRadius: 999,
               padding: "6px 12px",
-              cursor: "pointer",
+              cursor: page === 1 ? "default" : "pointer",
               opacity: page === 1 ? 0.4 : 1,
+              fontSize: 13,
             }}
           >
             Prev
@@ -534,14 +673,16 @@ function ReceiverPage({ brandBlue, brandGold }) {
           <button
             disabled={page >= Math.ceil(total / pageSize)}
             onClick={() => setPage(page + 1)}
+            className="btn-hover"
             style={{
               background: brandBlue,
               color: "#fff",
               border: "none",
-              borderRadius: 6,
+              borderRadius: 999,
               padding: "6px 12px",
-              cursor: "pointer",
+              cursor: page >= Math.ceil(total / pageSize) ? "default" : "pointer",
               opacity: page >= Math.ceil(total / pageSize) ? 0.4 : 1,
+              fontSize: 13,
             }}
           >
             Next
@@ -562,6 +703,7 @@ const tdStyle = {
   padding: "6px 6px",
   borderBottom: "1px solid #e2e8f0",
 };
+
 
 
 
