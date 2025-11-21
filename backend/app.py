@@ -62,7 +62,8 @@ with engine.begin() as conn:
     conn.execute(text("""
         CREATE TABLE IF NOT EXISTS messages (
             id BIGSERIAL PRIMARY KEY,
-            message_id TEXT,
+            client_message_id TEXT,
+            pubsub_message_id TEXT,
             data TEXT NOT NULL,
             source TEXT,
             attributes JSONB,
@@ -70,10 +71,15 @@ with engine.begin() as conn:
             is_duplicate BOOLEAN NOT NULL DEFAULT FALSE
         );
     """))
-    # helpful index for lookups by message_id
-    CREATE INDEX IF NOT EXISTS idx_messages_client_message_id
-ON messages(client_message_id);
-    conn.execute(text("CREATE INDEX IF NOT EXISTS idx_messages_publish_time ON messages(publish_time DESC);"))
+    # helpful index for lookups by client_message_id
+    conn.execute(text("""
+        CREATE INDEX IF NOT EXISTS idx_messages_client_message_id
+        ON messages(client_message_id);
+    """))
+    conn.execute(text("""
+        CREATE INDEX IF NOT EXISTS idx_messages_publish_time
+        ON messages(publish_time DESC);
+    """))
 
 
 
