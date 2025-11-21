@@ -287,7 +287,7 @@ function formatPublishTime(value) {
     const [datePart, timePartRaw] = value.split("T");
     if (!timePartRaw) return value;
     const noZ = timePartRaw.replace("Z", "");
-    const hhmm = noZ.slice(0, 5); // HH:MM
+    const hhmm = noZ.slice(0, 5); 
     return `${datePart} ${hhmm}`;
   }
   return value;
