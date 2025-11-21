@@ -18,6 +18,7 @@ export default function App() {
         color: "#e5e7eb",
         fontFamily:
           '-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
+        overflowX: "hidden", // prevent any horizontal spill on mobile
       }}
     >
       <style>{`
@@ -72,7 +73,7 @@ export default function App() {
         </p>
       </header>
 
-      {/* Main content  */}
+      {/* Main content */}
       <div
         style={{
           maxWidth: 980,
@@ -80,15 +81,18 @@ export default function App() {
           padding: "0 16px",
           width: "100%",
           flex: 1,
+          boxSizing: "border-box",
         }}
       >
-        {/* Tabs row  */}
+        {/* Tabs row */}
         <div
           style={{
             width: "100%",
+            maxWidth: "100%",
             display: "flex",
             justifyContent: "center",
             marginBottom: 24,
+            boxSizing: "border-box",
           }}
         >
           <div
@@ -235,13 +239,15 @@ function SenderPage({ brandBlue, brandGold }) {
       style={{
         background: "rgba(255, 255, 255, 0.85)",
         backdropFilter: "blur(6px)",
-        padding: 22,
+        padding: "22px 18px",
         borderRadius: 16,
         boxShadow: "0 18px 40px rgba(0,0,0,0.85)",
         border: "1px solid rgba(0,0,0,0.08)",
         width: "100%",
         maxWidth: 900,
         margin: "0 auto",
+        boxSizing: "border-box",
+        overflowX: "hidden",
       }}
     >
       <h2
@@ -334,7 +340,6 @@ function SenderPage({ brandBlue, brandGold }) {
   );
 }
 
-
 function formatPublishTime(value) {
   if (!value) return "";
   if (typeof value === "string" && value.includes("T")) {
@@ -351,18 +356,15 @@ function ReceiverPage({ brandBlue, brandGold }) {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // pagination
   const [page, setPage] = useState(1);
   const pageSize = 10;
   const [total, setTotal] = useState(0);
 
-  // auto refresh
   const [autoRefresh, setAutoRefresh] = useState(true);
 
-  // filters
   const [filterMessageId, setFilterMessageId] = useState("");
   const [filterSource, setFilterSource] = useState("");
-  const [filterPublishAt, setFilterPublishAt] = useState(""); 
+  const [filterPublishAt, setFilterPublishAt] = useState("");
   const [filterDuplicate, setFilterDuplicate] = useState("");
   const [filterText, setFilterText] = useState("");
 
@@ -419,7 +421,8 @@ function ReceiverPage({ brandBlue, brandGold }) {
       const id = setInterval(load, 10000);
       return () => clearInterval(id);
     }
-  }, [page, autoRefresh]); 
+  }, [page, autoRefresh]);
+
   function clearFilters() {
     setFilterMessageId("");
     setFilterSource("");
@@ -436,7 +439,7 @@ function ReceiverPage({ brandBlue, brandGold }) {
       style={{
         background: "rgba(255, 255, 255, 0.85)",
         backdropFilter: "blur(6px)",
-        padding: 22,
+        padding: "22px 18px",
         borderRadius: 16,
         boxShadow: "0 18px 40px rgba(0,0,0,0.85)",
         border: "1px solid rgba(0,0,0,0.08)",
@@ -445,6 +448,8 @@ function ReceiverPage({ brandBlue, brandGold }) {
         maxWidth: 900,
         marginLeft: "auto",
         marginRight: "auto",
+        boxSizing: "border-box",
+        overflowX: "hidden",
       }}
     >
       <h2
@@ -740,7 +745,6 @@ function ReceiverPage({ brandBlue, brandGold }) {
         </div>
       )}
 
-      {/* Pagination */}
       {total > pageSize && (
         <div
           style={{
@@ -805,10 +809,3 @@ const tdStyle = {
   borderBottom: "1px solid #111827",
   color: "#e5e7eb",
 };
-
-
-
-
-
-
-
