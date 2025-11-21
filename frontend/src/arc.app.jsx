@@ -226,12 +226,13 @@ function SenderPage({ brandBlue, brandGold }) {
       className="fade-in"
       style={{
         background:
-          "linear-gradient(145deg, rgba(15,23,42,0.96), rgba(3,7,18,0.96))",
+       background: "rgba(255, 255, 255, 0.85)",
+      backdropFilter: "blur(6px)",
         padding: 22,
         borderRadius: 16,
         boxShadow: "0 18px 40px rgba(0,0,0,0.85)",
-        border: "1px solid rgba(55,65,81,0.9)",
-      }}
+        border: "1px solid rgba(0,0,0,0.08)",
+     }}
     >
       <h2
         style={{
@@ -421,11 +422,13 @@ function ReceiverPage({ brandBlue, brandGold }) {
       className="fade-in"
       style={{
         background:
-          "linear-gradient(145deg, rgba(15,23,42,0.96), rgba(3,7,18,0.96))",
+         background: "rgba(255, 255, 255, 0.85)",
+        backdropFilter: "blur(6px)",
         padding: 22,
         borderRadius: 16,
         boxShadow: "0 18px 40px rgba(0,0,0,0.85)",
-        border: "1px solid rgba(55,65,81,0.9)",
+       border: "1px solid rgba(0,0,0,0.08)",
+
         marginTop: 24,
       }}
     >
