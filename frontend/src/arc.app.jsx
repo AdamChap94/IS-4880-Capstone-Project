@@ -400,12 +400,6 @@ function ReceiverPage({ brandBlue, brandGold }) {
         View messages stored in the database. Use filters to search by attributes.
       </p>
 
-      {loading && (
-        <p style={{ fontSize: 12, color: "#64748b", marginTop: 0, marginBottom: 8 }}>
-          Refreshing messages...
-        </p>
-      )}
-
       {/* Filters */}
       <div
         style={{
@@ -468,7 +462,7 @@ function ReceiverPage({ brandBlue, brandGold }) {
         </div>
         <div>
           <label style={{ display: "block", fontSize: 13, marginBottom: 4 }}>
-            Publish date and time (24-hour)
+            Publish date and time
           </label>
           <input
             type="datetime-local"
