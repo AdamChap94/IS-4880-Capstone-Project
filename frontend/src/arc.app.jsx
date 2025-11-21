@@ -72,7 +72,7 @@ export default function App() {
         </p>
       </header>
 
-      {/* Main content container */}
+      {/* Main content  */}
       <div
         style={{
           maxWidth: 980,
@@ -82,7 +82,7 @@ export default function App() {
           flex: 1,
         }}
       >
-        {/* Tabs row (full width, center the pill) */}
+        {/* Tabs row  */}
         <div
           style={{
             width: "100%",
@@ -334,14 +334,14 @@ function SenderPage({ brandBlue, brandGold }) {
   );
 }
 
-// helper to format publish time as "YYYY-MM-DD HH:MM" from ISO-like strings
+
 function formatPublishTime(value) {
   if (!value) return "";
   if (typeof value === "string" && value.includes("T")) {
     const [datePart, timePartRaw] = value.split("T");
     if (!timePartRaw) return value;
     const noZ = timePartRaw.replace("Z", "");
-    const hhmm = noZ.slice(0, 5); // HH:MM
+    const hhmm = noZ.slice(0, 5);
     return `${datePart} ${hhmm}`;
   }
   return value;
@@ -362,9 +362,9 @@ function ReceiverPage({ brandBlue, brandGold }) {
   // filters
   const [filterMessageId, setFilterMessageId] = useState("");
   const [filterSource, setFilterSource] = useState("");
-  const [filterPublishAt, setFilterPublishAt] = useState(""); // single publish date/time filter
+  const [filterPublishAt, setFilterPublishAt] = useState(""); 
   const [filterDuplicate, setFilterDuplicate] = useState("");
-  const [filterText, setFilterText] = useState(""); // message text filter
+  const [filterText, setFilterText] = useState("");
 
   const lightRow = "#020617";
   const darkRow = "#020617";
@@ -419,8 +419,7 @@ function ReceiverPage({ brandBlue, brandGold }) {
       const id = setInterval(load, 10000);
       return () => clearInterval(id);
     }
-  }, [page, autoRefresh]); // eslint-disable-line
-
+  }, [page, autoRefresh]); 
   function clearFilters() {
     setFilterMessageId("");
     setFilterSource("");
