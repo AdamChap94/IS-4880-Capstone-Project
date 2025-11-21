@@ -72,15 +72,19 @@ export default function App() {
         </p>
       </header>
 
-      <div
-        style={{
-          maxWidth: 980,
-          margin: "28px auto 36px",
-          padding: "0 16px",
-          width: "100%",
-          flex: 1,
-        }}
-      >
+     <div
+  style={{
+    maxWidth: 980,
+    margin: "28px auto 36px",
+    padding: "0 16px",
+    width: "100%",
+    flex: 1,
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",   
+  }}
+>
+
         {/* Tabs */}
         <div
           style={{
@@ -221,17 +225,19 @@ function SenderPage({ brandBlue, brandGold }) {
   };
 
   return (
-    <div
-      className="fade-in"
-      style={{
-        background: "rgba(255, 255, 255, 0.85)",
-        backdropFilter: "blur(6px)",
-        padding: 22,
-        borderRadius: 16,
-        boxShadow: "0 18px 40px rgba(0,0,0,0.85)",
-        border: "1px solid rgba(0,0,0,0.08)",
-      }}
-    >
+  <div
+    className="fade-in"
+    style={{
+      background: "rgba(255, 255, 255, 0.85)",
+      backdropFilter: "blur(6px)",
+      padding: 22,
+      borderRadius: 16,
+      boxShadow: "0 18px 40px rgba(0,0,0,0.85)",
+      border: "1px solid rgba(0,0,0,0.08)",
+      width: "100%",       
+      maxWidth: 900,      
+    }}
+  >
       <h2
         style={{
           marginTop: 0,
@@ -416,18 +422,20 @@ function ReceiverPage({ brandBlue, brandGold }) {
   }
 
   return (
-    <div
-      className="fade-in"
-      style={{
-        background: "rgba(255, 255, 255, 0.85)",
-        backdropFilter: "blur(6px)",
-        padding: 22,
-        borderRadius: 16,
-        boxShadow: "0 18px 40px rgba(0,0,0,0.85)",
-        border: "1px solid rgba(0,0,0,0.08)",
-        marginTop: 24,
-      }}
-    >
+  <div
+    className="fade-in"
+    style={{
+      background: "rgba(255, 255, 255, 0.85)",
+      backdropFilter: "blur(6px)",
+      padding: 22,
+      borderRadius: 16,
+      boxShadow: "0 18px 40px rgba(0,0,0,0.85)",
+      border: "1px solid rgba(0,0,0,0.08)",
+      marginTop: 24,
+      width: "100%",
+      maxWidth: 900,
+    }}
+  >
       <h2
         style={{
           marginTop: 0,
