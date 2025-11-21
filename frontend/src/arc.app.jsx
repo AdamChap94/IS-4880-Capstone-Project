@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 const API_BASE = import.meta.env.VITE_API_BASE || "";
 
 export default function App() {
-  const [view, setView] = useState("send"); // "send" | "receive"
+  const [view, setView] = useState("send"); 
   const brandBlue = "#003366";
   const brandGold = "#FFC72C";
 
@@ -154,23 +154,22 @@ function SenderPage({ brandBlue, brandGold }) {
       <label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
         Message
       </label>
-    <textarea
-  style={{
-    width: "100%",
-    height: 120,           
-    padding: 8,
-    borderRadius: 6,
-    border: "1px solid #cbd5f5",
-    marginBottom: 12,
-    resize: "none",        
-    overflowY: "auto",     
-    boxSizing: "border-box" 
-  }}
-  placeholder="Type a message."
-  value={message}
-  onChange={(e) => setMessage(e.target.value)}
-/>
-
+      <textarea
+        style={{
+          width: "100%",
+          height: 120,
+          padding: 8,
+          borderRadius: 6,
+          border: "1px solid #cbd5f5",
+          marginBottom: 12,
+          resize: "none",
+          overflowY: "auto",
+          boxSizing: "border-box",
+        }}
+        placeholder="Type a message."
+        value={message}
+        onChange={(e) => setMessage(e.target.value)}
+      />
 
       <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
         <div style={{ flex: 1 }}>
@@ -213,6 +212,19 @@ function SenderPage({ brandBlue, brandGold }) {
   );
 }
 
+// helper to format publish time as "YYYY-MM-DD HH:MM" from ISO-like strings
+function formatPublishTime(value) {
+  if (!value) return "";
+  if (typeof value === "string" && value.includes("T")) {
+    const [datePart, timePartRaw] = value.split("T");
+    if (!timePartRaw) return value;
+    const noZ = timePartRaw.replace("Z", "");
+    const hhmm = noZ.slice(0, 5); // HH:MM
+    return `${datePart} ${hhmm}`;
+  }
+  return value;
+}
+
 function ReceiverPage({ brandBlue, brandGold }) {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -228,10 +240,9 @@ function ReceiverPage({ brandBlue, brandGold }) {
   // filters
   const [filterMessageId, setFilterMessageId] = useState("");
   const [filterSource, setFilterSource] = useState("");
-  const [filterStart, setFilterStart] = useState("");
-  const [filterEnd, setFilterEnd] = useState("");
+  const [filterPublishAt, setFilterPublishAt] = useState(""); // single publish date/time filter
   const [filterDuplicate, setFilterDuplicate] = useState("");
-  const [filterText, setFilterText] = useState(""); // NEW: message text filter
+  const [filterText, setFilterText] = useState(""); // message text filter
 
   const lightGray = "#F3F4F6";
 
@@ -239,16 +250,14 @@ function ReceiverPage({ brandBlue, brandGold }) {
     const params = new URLSearchParams();
     if (filterMessageId.trim()) params.append("messageId", filterMessageId.trim());
     if (filterSource.trim()) params.append("source", filterSource.trim());
-    if (filterStart.trim()) params.append("start", filterStart.trim());
-    if (filterEnd.trim()) params.append("end", filterEnd.trim());
+    if (filterPublishAt.trim())
+      params.append("publish_datetime", filterPublishAt.trim());
     if (filterDuplicate) params.append("is_duplicate", filterDuplicate);
-    if (filterText.trim()) params.append("text", filterText.trim()); // NEW: text search
+    if (filterText.trim()) params.append("text", filterText.trim());
     params.append("page", page);
     params.append("limit", pageSize);
     return `?${params.toString()}`;
   }
-
-
 
   async function load() {
     setLoading(true);
@@ -289,17 +298,15 @@ function ReceiverPage({ brandBlue, brandGold }) {
     }
   }, [page, autoRefresh]); // eslint-disable-line
 
-    function clearFilters() {
+  function clearFilters() {
     setFilterMessageId("");
     setFilterSource("");
-    setFilterStart("");
-    setFilterEnd("");
+    setFilterPublishAt("");
     setFilterDuplicate("");
-    setFilterText(""); // clear message text filter too
+    setFilterText("");
     setPage(1);
     load();
   }
-
 
   return (
     <div
@@ -330,7 +337,7 @@ function ReceiverPage({ brandBlue, brandGold }) {
         </p>
       )}
 
-           {/* Filters */}
+      {/* Filters */}
       <div
         style={{
           display: "grid",
@@ -374,23 +381,12 @@ function ReceiverPage({ brandBlue, brandGold }) {
         </div>
         <div>
           <label style={{ display: "block", fontSize: 13, marginBottom: 4 }}>
-            Start date/time
+            Publish date & time (24-hour)
           </label>
           <input
             type="datetime-local"
-            value={filterStart}
-            onChange={(e) => setFilterStart(e.target.value)}
-            style={{ width: "100%", padding: 6, borderRadius: 6, border: "1px solid #cbd5f5" }}
-          />
-        </div>
-        <div>
-          <label style={{ display: "block", fontSize: 13, marginBottom: 4 }}>
-            End date/time
-          </label>
-          <input
-            type="datetime-local"
-            value={filterEnd}
-            onChange={(e) => setFilterEnd(e.target.value)}
+            value={filterPublishAt}
+            onChange={(e) => setFilterPublishAt(e.target.value)}
             style={{ width: "100%", padding: 6, borderRadius: 6, border: "1px solid #cbd5f5" }}
           />
         </div>
@@ -409,7 +405,6 @@ function ReceiverPage({ brandBlue, brandGold }) {
           </select>
         </div>
       </div>
-
 
       <div style={{ display: "flex", gap: 8, marginBottom: 16, alignItems: "center" }}>
         <button
@@ -477,6 +472,9 @@ function ReceiverPage({ brandBlue, brandGold }) {
                   m.is_duplicate === true ||
                   m.is_duplicate === "true" ||
                   m.isDuplicate === true;
+
+                const rawTime = m.publishTime || m.created_at || "";
+
                 return (
                   <tr
                     key={m.messageId || m.id || idx}
@@ -491,7 +489,7 @@ function ReceiverPage({ brandBlue, brandGold }) {
                         m.source ||
                         ""}
                     </td>
-                    <td style={tdStyle}>{m.publishTime || m.created_at || ""}</td>
+                    <td style={tdStyle}>{formatPublishTime(rawTime)}</td>
                     <td
                       style={{
                         ...tdStyle,
@@ -569,5 +567,6 @@ const tdStyle = {
   padding: "6px 6px",
   borderBottom: "1px solid #e2e8f0",
 };
+
 
 
