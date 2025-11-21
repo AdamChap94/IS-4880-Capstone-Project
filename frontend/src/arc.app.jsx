@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 const API_BASE = import.meta.env.VITE_API_BASE || "";
 
 export default function App() {
-  const [view, setView] = useState("send"); 
+  const [view, setView] = useState("send"); // "send" | "receive"
   const brandBlue = "#003366";
   const brandGold = "#FFC72C";
 
@@ -12,12 +12,15 @@ export default function App() {
     <div
       style={{
         minHeight: "100vh",
-        background: "linear-gradient(to bottom right, #ffffff, #eef2f7)",
+        background: "radial-gradient(circle at top, #1e293b 0, #020617 45%, #000 100%)",
         display: "flex",
         flexDirection: "column",
+        color: "#e5e7eb",
+        fontFamily:
+          '-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
       }}
     >
-      {/* Global styles for animations and hover effects */}
+      {/* Global styles for animations, hover, and field focus */}
       <style>{`
         .fade-in {
           animation: fadeIn 0.25s ease-in-out;
@@ -25,7 +28,7 @@ export default function App() {
         @keyframes fadeIn {
           from {
             opacity: 0;
-            transform: translateY(4px);
+            transform: translateY(6px);
           }
           to {
             opacity: 1;
@@ -34,51 +37,78 @@ export default function App() {
         }
 
         .table-row:hover {
-          background-color: #e8eef7 !important;
+          background-color: #111827 !important;
         }
 
         .btn-hover {
-          transition: transform 0.1s ease, box-shadow 0.2s ease;
+          transition: transform 0.1s ease, box-shadow 0.2s ease, background 0.15s ease;
         }
         .btn-hover:hover {
           transform: translateY(-1px);
-          box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+          box-shadow: 0 0 16px rgba(37, 99, 235, 0.4);
+        }
+
+        input, select, textarea {
+          outline: none;
+        }
+        input:focus, select:focus, textarea:focus {
+          border-color: #3b82f6 !important;
+          box-shadow: 0 0 0 1px rgba(59,130,246,0.7);
         }
       `}</style>
 
       <header
         style={{
-          background: brandBlue,
-          color: "#fff",
-          padding: "16px 24px",
-          borderBottom: `4px solid ${brandGold}`,
+          background: "rgba(3, 7, 18, 0.9)",
+          backdropFilter: "blur(10px)",
+          color: "#e5e7eb",
+          padding: "14px 24px",
+          borderBottom: `3px solid ${brandGold}`,
+          boxShadow: "0 8px 24px rgba(0,0,0,0.6)",
         }}
       >
         <h1 style={{ margin: 0, fontSize: 20 }}>Group 5 Messaging Provider</h1>
-        <p style={{ margin: 0, fontSize: 12 }}>Publisher and Consumer pages</p>
+        <p style={{ margin: 0, fontSize: 12, color: "#9ca3af" }}>
+          Pub/Sub based publisher and consumer dashboard
+        </p>
       </header>
 
       <div
         style={{
-          maxWidth: 900,
-          margin: "24px auto 32px",
+          maxWidth: 980,
+          margin: "28px auto 36px",
           padding: "0 16px",
           width: "100%",
           flex: 1,
         }}
       >
         {/* Tabs */}
-        <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
+        <div
+          style={{
+            display: "inline-flex",
+            gap: 8,
+            marginBottom: 24,
+            padding: 4,
+            borderRadius: 999,
+            background: "rgba(15,23,42,0.9)",
+            boxShadow: "0 10px 30px rgba(15,23,42,0.7)",
+            border: "1px solid rgba(75,85,99,0.7)",
+          }}
+        >
           <button
             onClick={() => setView("send")}
             className="btn-hover"
             style={{
-              padding: "8px 16px",
-              background: view === "send" ? brandBlue : "#e2e8f0",
-              color: view === "send" ? "#fff" : "#000",
+              padding: "8px 22px",
+              background:
+                view === "send"
+                  ? brandBlue
+                  : "linear-gradient(to right, #020617, #111827)",
+              color: view === "send" ? "#f9fafb" : "#9ca3af",
               border: "none",
               borderRadius: 999,
               cursor: "pointer",
+              fontSize: 13,
             }}
           >
             Sender
@@ -87,12 +117,16 @@ export default function App() {
             onClick={() => setView("receive")}
             className="btn-hover"
             style={{
-              padding: "8px 16px",
-              background: view === "receive" ? brandBlue : "#e2e8f0",
-              color: view === "receive" ? "#fff" : "#000",
+              padding: "8px 22px",
+              background:
+                view === "receive"
+                  ? brandBlue
+                  : "linear-gradient(to right, #020617, #111827)",
+              color: view === "receive" ? "#f9fafb" : "#9ca3af",
               border: "none",
               borderRadius: 999,
               cursor: "pointer",
+              fontSize: 13,
             }}
           >
             Receiver
@@ -100,29 +134,24 @@ export default function App() {
         </div>
 
         {view === "send" ? (
-          <SenderPage
-            brandBlue={brandBlue}
-            brandGold={brandGold}
-          />
+          <SenderPage brandBlue={brandBlue} brandGold={brandGold} />
         ) : (
-          <ReceiverPage
-            brandBlue={brandBlue}
-            brandGold={brandGold}
-          />
+          <ReceiverPage brandBlue={brandBlue} brandGold={brandGold} />
         )}
       </div>
 
       <footer
         style={{
-          background: brandBlue,
-          color: "#fff",
+          background: "rgba(3, 7, 18, 0.95)",
+          color: "#9ca3af",
           textAlign: "center",
           padding: "10px 0",
-          borderTop: `4px solid ${brandGold}`,
-          fontSize: 12,
+          borderTop: `3px solid ${brandGold}`,
+          fontSize: 11,
+          boxShadow: "0 -6px 24px rgba(0,0,0,0.7)",
         }}
       >
-        Group 5 Messaging Provider © {new Date().getFullYear()}
+        Group 5 Messaging Provider · {new Date().getFullYear()}
       </footer>
     </div>
   );
@@ -196,59 +225,67 @@ function SenderPage({ brandBlue, brandGold }) {
     <div
       className="fade-in"
       style={{
-        background: "#fff",
-        padding: 20,
-        borderRadius: 12,
-        boxShadow: "0 4px 12px rgba(15,23,42,0.08)",
+        background:
+          "linear-gradient(145deg, rgba(15,23,42,0.96), rgba(3,7,18,0.96))",
+        padding: 22,
+        borderRadius: 16,
+        boxShadow: "0 18px 40px rgba(0,0,0,0.85)",
+        border: "1px solid rgba(55,65,81,0.9)",
       }}
     >
       <h2
         style={{
           marginTop: 0,
-          color: brandBlue,
-          borderBottom: `2px solid ${brandGold}`,
-          paddingBottom: 4,
+          color: "#e5e7eb",
+          borderBottom: `1px solid rgba(75,85,99,0.9)`,
+          paddingBottom: 6,
+          fontSize: 17,
         }}
       >
         Sender page
       </h2>
-      <p style={{ color: "#475569", fontSize: 14, marginTop: 8 }}>
-        This page is for publishing messages to the Pub/Sub topic through the backend.
+      <p style={{ color: "#9ca3af", fontSize: 13, marginTop: 8, marginBottom: 16 }}>
+        Publish messages into the Pub/Sub topic through the backend. Use an optional
+        Message ID to test duplicate handling.
       </p>
 
-      <label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
+      <label style={{ display: "block", marginBottom: 6, fontSize: 13 }}>
         Message
       </label>
       <textarea
         style={{
           width: "100%",
-          height: 120,
-          padding: 8,
-          borderRadius: 8,
-          border: "1px solid #cbd5f5",
+          height: 130,
+          padding: 10,
+          borderRadius: 10,
+          border: "1px solid #1f2937",
           marginBottom: 12,
           resize: "none",
           overflowY: "auto",
           boxSizing: "border-box",
           fontSize: 14,
+          background: "#020617",
+          color: "#e5e7eb",
         }}
-        placeholder="Type a message."
+        placeholder="Type a message to publish..."
         value={message}
         onChange={(e) => setMessage(e.target.value)}
       />
 
-      <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
+      <div style={{ display: "flex", gap: 12, marginBottom: 14 }}>
         <div style={{ flex: 1 }}>
-          <label style={{ display: "block", fontSize: 13, marginBottom: 4 }}>
+          <label style={{ display: "block", fontSize: 12, marginBottom: 4 }}>
             Message ID (optional)
           </label>
           <input
             style={{
               width: "100%",
               padding: 8,
-              borderRadius: 8,
-              border: "1px solid #cbd5f5",
-              fontSize: 14,
+              borderRadius: 10,
+              border: "1px solid #1f2937",
+              fontSize: 13,
+              background: "#020617",
+              color: "#e5e7eb",
             }}
             value={messageId}
             onChange={(e) => setMessageId(e.target.value)}
@@ -263,31 +300,33 @@ function SenderPage({ brandBlue, brandGold }) {
         className="btn-hover"
         style={{
           background: brandBlue,
-          color: "#fff",
+          color: "#f9fafb",
           border: "none",
-          padding: "8px 18px",
+          padding: "8px 20px",
           borderRadius: 999,
-          cursor: "pointer",
+          cursor: loading ? "default" : "pointer",
           fontSize: 14,
+          opacity: loading ? 0.7 : 1,
         }}
       >
         {loading ? "Sending..." : "Send message"}
       </button>
 
       {feedback ? (
-        <p style={{ marginTop: 12, fontSize: 13, color: "#0f172a" }}>{feedback}</p>
+        <p style={{ marginTop: 12, fontSize: 13, color: "#e5e7eb" }}>{feedback}</p>
       ) : null}
     </div>
   );
 }
 
+// helper to format publish time as "YYYY-MM-DD HH:MM" from ISO-like strings
 function formatPublishTime(value) {
   if (!value) return "";
   if (typeof value === "string" && value.includes("T")) {
     const [datePart, timePartRaw] = value.split("T");
     if (!timePartRaw) return value;
     const noZ = timePartRaw.replace("Z", "");
-    const hhmm = noZ.slice(0, 5); 
+    const hhmm = noZ.slice(0, 5); // HH:MM
     return `${datePart} ${hhmm}`;
   }
   return value;
@@ -308,11 +347,12 @@ function ReceiverPage({ brandBlue, brandGold }) {
   // filters
   const [filterMessageId, setFilterMessageId] = useState("");
   const [filterSource, setFilterSource] = useState("");
-  const [filterPublishAt, setFilterPublishAt] = useState(""); 
+  const [filterPublishAt, setFilterPublishAt] = useState(""); // single publish date/time filter
   const [filterDuplicate, setFilterDuplicate] = useState("");
-  const [filterText, setFilterText] = useState(""); 
+  const [filterText, setFilterText] = useState(""); // message text filter
 
-  const lightGray = "#F3F4F6";
+  const lightRow = "#020617";
+  const darkRow = "#020617";
 
   function buildQuery() {
     const params = new URLSearchParams();
@@ -364,7 +404,7 @@ function ReceiverPage({ brandBlue, brandGold }) {
       const id = setInterval(load, 10000);
       return () => clearInterval(id);
     }
-  }, [page, autoRefresh]); 
+  }, [page, autoRefresh]); // eslint-disable-line
 
   function clearFilters() {
     setFilterMessageId("");
@@ -380,37 +420,49 @@ function ReceiverPage({ brandBlue, brandGold }) {
     <div
       className="fade-in"
       style={{
-        background: "#fff",
-        padding: 20,
-        borderRadius: 12,
-        boxShadow: "0 4px 12px rgba(15,23,42,0.08)",
+        background:
+          "linear-gradient(145deg, rgba(15,23,42,0.96), rgba(3,7,18,0.96))",
+        padding: 22,
+        borderRadius: 16,
+        boxShadow: "0 18px 40px rgba(0,0,0,0.85)",
+        border: "1px solid rgba(55,65,81,0.9)",
+        marginTop: 24,
       }}
     >
       <h2
         style={{
           marginTop: 0,
-          color: brandBlue,
-          borderBottom: `2px solid ${brandGold}`,
-          paddingBottom: 4,
+          color: "#e5e7eb",
+          borderBottom: `1px solid rgba(75,85,99,0.9)`,
+          paddingBottom: 6,
+          fontSize: 17,
         }}
       >
         Receiver page
       </h2>
-      <p style={{ color: "#475569", fontSize: 14, marginBottom: 8 }}>
-        View messages stored in the database. Use filters to search by attributes.
+      <p style={{ color: "#9ca3af", fontSize: 13, marginBottom: 10 }}>
+        View messages stored in the database. Use the filters below to locate specific
+        messages by ID, source, text, publish timestamp, or duplicate status.
       </p>
+
+      {loading && (
+        <p style={{ fontSize: 11, color: "#6b7280", marginTop: 0, marginBottom: 8 }}>
+          Syncing messages from backend...
+        </p>
+      )}
 
       {/* Filters */}
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+          gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
           gap: 12,
-          marginBottom: 12,
+          marginBottom: 10,
+          marginTop: 4,
         }}
       >
         <div>
-          <label style={{ display: "block", fontSize: 13, marginBottom: 4 }}>
+          <label style={{ display: "block", fontSize: 12, marginBottom: 4 }}>
             Message ID
           </label>
           <input
@@ -419,15 +471,17 @@ function ReceiverPage({ brandBlue, brandGold }) {
             style={{
               width: "100%",
               padding: 6,
-              borderRadius: 8,
-              border: "1px solid #cbd5f5",
-              fontSize: 13,
+              borderRadius: 10,
+              border: "1px solid #1f2937",
+              fontSize: 12,
+              background: "#020617",
+              color: "#e5e7eb",
             }}
             placeholder=""
           />
         </div>
         <div>
-          <label style={{ display: "block", fontSize: 13, marginBottom: 4 }}>
+          <label style={{ display: "block", fontSize: 12, marginBottom: 4 }}>
             Source
           </label>
           <input
@@ -436,15 +490,17 @@ function ReceiverPage({ brandBlue, brandGold }) {
             style={{
               width: "100%",
               padding: 6,
-              borderRadius: 8,
-              border: "1px solid #cbd5f5",
-              fontSize: 13,
+              borderRadius: 10,
+              border: "1px solid #1f2937",
+              fontSize: 12,
+              background: "#020617",
+              color: "#e5e7eb",
             }}
             placeholder="ui"
           />
         </div>
         <div>
-          <label style={{ display: "block", fontSize: 13, marginBottom: 4 }}>
+          <label style={{ display: "block", fontSize: 12, marginBottom: 4 }}>
             Message text
           </label>
           <input
@@ -453,16 +509,18 @@ function ReceiverPage({ brandBlue, brandGold }) {
             style={{
               width: "100%",
               padding: 6,
-              borderRadius: 8,
-              border: "1px solid #cbd5f5",
-              fontSize: 13,
+              borderRadius: 10,
+              border: "1px solid #1f2937",
+              fontSize: 12,
+              background: "#020617",
+              color: "#e5e7eb",
             }}
-            placeholder="Full or partial text…"
+            placeholder="Full or partial text..."
           />
         </div>
         <div>
-          <label style={{ display: "block", fontSize: 13, marginBottom: 4 }}>
-            Publish date and time
+          <label style={{ display: "block", fontSize: 12, marginBottom: 4 }}>
+            Publish date and time (24-hour)
           </label>
           <input
             type="datetime-local"
@@ -471,14 +529,16 @@ function ReceiverPage({ brandBlue, brandGold }) {
             style={{
               width: "100%",
               padding: 6,
-              borderRadius: 8,
-              border: "1px solid #cbd5f5",
-              fontSize: 13,
+              borderRadius: 10,
+              border: "1px solid #1f2937",
+              fontSize: 12,
+              background: "#020617",
+              color: "#e5e7eb",
             }}
           />
         </div>
         <div>
-          <label style={{ display: "block", fontSize: 13, marginBottom: 4 }}>
+          <label style={{ display: "block", fontSize: 12, marginBottom: 4 }}>
             Is duplicate
           </label>
           <select
@@ -487,9 +547,11 @@ function ReceiverPage({ brandBlue, brandGold }) {
             style={{
               width: "100%",
               padding: 6,
-              borderRadius: 8,
-              border: "1px solid #cbd5f5",
-              fontSize: 13,
+              borderRadius: 10,
+              border: "1px solid #1f2937",
+              fontSize: 12,
+              background: "#020617",
+              color: "#e5e7eb",
             }}
           >
             <option value="">T/F</option>
@@ -502,8 +564,8 @@ function ReceiverPage({ brandBlue, brandGold }) {
       <hr
         style={{
           border: "none",
-          borderTop: "1px solid #e5e7eb",
-          margin: "4px 0 12px",
+          borderTop: "1px solid rgba(55,65,81,0.9)",
+          margin: "6px 0 12px",
         }}
       />
 
@@ -516,9 +578,9 @@ function ReceiverPage({ brandBlue, brandGold }) {
           className="btn-hover"
           style={{
             background: brandBlue,
-            color: "#fff",
+            color: "#f9fafb",
             border: "none",
-            padding: "6px 16px",
+            padding: "6px 18px",
             borderRadius: 999,
             cursor: "pointer",
             fontSize: 13,
@@ -530,17 +592,18 @@ function ReceiverPage({ brandBlue, brandGold }) {
           onClick={clearFilters}
           className="btn-hover"
           style={{
-            background: "#e2e8f0",
-            border: "none",
-            padding: "6px 16px",
+            background: "linear-gradient(to right, #111827, #020617)",
+            border: "1px solid #374151",
+            padding: "6px 18px",
             borderRadius: 999,
             cursor: "pointer",
             fontSize: 13,
+            color: "#e5e7eb",
           }}
         >
           Clear search
         </button>
-        <label style={{ marginLeft: "auto", fontSize: 13, color: brandBlue }}>
+        <label style={{ marginLeft: "auto", fontSize: 12, color: "#9ca3af" }}>
           <input
             type="checkbox"
             checked={autoRefresh}
@@ -552,18 +615,25 @@ function ReceiverPage({ brandBlue, brandGold }) {
       </div>
 
       {messages.length === 0 ? (
-        <p>No messages found.</p>
+        <p style={{ fontSize: 13, color: "#9ca3af" }}>No messages found.</p>
       ) : (
         <div style={{ overflowX: "auto" }}>
           <table
             style={{
               width: "100%",
               borderCollapse: "collapse",
-              fontSize: 13,
+              fontSize: 12,
+              background: "#020617",
             }}
           >
             <thead>
-              <tr style={{ background: brandBlue, color: "#fff" }}>
+              <tr
+                style={{
+                  background:
+                    "linear-gradient(to right, #020617, #111827, #020617)",
+                  color: "#e5e7eb",
+                }}
+              >
                 <th style={thStyle}>Message ID</th>
                 <th style={thStyle}>Data</th>
                 <th style={thStyle}>Source</th>
@@ -584,7 +654,9 @@ function ReceiverPage({ brandBlue, brandGold }) {
                   <tr
                     key={m.messageId || m.id || idx}
                     className="table-row"
-                    style={{ background: idx % 2 === 0 ? "#fff" : lightGray }}
+                    style={{
+                      background: idx % 2 === 0 ? lightRow : darkRow,
+                    }}
                   >
                     <td style={tdStyle}>{m.messageId || m.id || "N/A"}</td>
                     <td style={{ ...tdStyle, maxWidth: 260, wordBreak: "break-word" }}>
@@ -600,12 +672,12 @@ function ReceiverPage({ brandBlue, brandGold }) {
                       {isDup ? (
                         <span
                           style={{
-                            background: "#fee2e2",
-                            color: "#b91c1c",
-                            padding: "2px 6px",
-                            borderRadius: 6,
-                            fontWeight: 600,
-                            fontSize: 12,
+                            background: "rgba(248, 113, 113, 0.18)",
+                            color: "#fca5a5",
+                            padding: "2px 7px",
+                            borderRadius: 999,
+                            fontSize: 11,
+                            border: "1px solid rgba(239,68,68,0.5)",
                           }}
                         >
                           Duplicate
@@ -613,12 +685,12 @@ function ReceiverPage({ brandBlue, brandGold }) {
                       ) : (
                         <span
                           style={{
-                            background: "#e0f2fe",
-                            color: brandBlue,
-                            padding: "2px 6px",
-                            borderRadius: 6,
-                            fontWeight: 500,
-                            fontSize: 12,
+                            background: "rgba(56, 189, 248, 0.16)",
+                            color: "#7dd3fc",
+                            padding: "2px 7px",
+                            borderRadius: 999,
+                            fontSize: 11,
+                            border: "1px solid rgba(56,189,248,0.5)",
                           }}
                         >
                           Unique
@@ -650,18 +722,18 @@ function ReceiverPage({ brandBlue, brandGold }) {
             className="btn-hover"
             style={{
               background: brandBlue,
-              color: "#fff",
+              color: "#f9fafb",
               border: "none",
               borderRadius: 999,
               padding: "6px 12px",
               cursor: page === 1 ? "default" : "pointer",
               opacity: page === 1 ? 0.4 : 1,
-              fontSize: 13,
+              fontSize: 12,
             }}
           >
             Prev
           </button>
-          <span style={{ fontSize: 13 }}>
+          <span style={{ fontSize: 12, color: "#9ca3af" }}>
             Page {page} of {Math.ceil(total / pageSize) || 1}
           </span>
           <button
@@ -670,13 +742,13 @@ function ReceiverPage({ brandBlue, brandGold }) {
             className="btn-hover"
             style={{
               background: brandBlue,
-              color: "#fff",
+              color: "#f9fafb",
               border: "none",
               borderRadius: 999,
               padding: "6px 12px",
               cursor: page >= Math.ceil(total / pageSize) ? "default" : "pointer",
               opacity: page >= Math.ceil(total / pageSize) ? 0.4 : 1,
-              fontSize: 13,
+              fontSize: 12,
             }}
           >
             Next
@@ -690,13 +762,15 @@ function ReceiverPage({ brandBlue, brandGold }) {
 const thStyle = {
   textAlign: "left",
   padding: "8px 6px",
-  borderBottom: "1px solid #cbd5f5",
+  borderBottom: "1px solid #1f2937",
 };
 
 const tdStyle = {
   padding: "6px 6px",
-  borderBottom: "1px solid #e2e8f0",
+  borderBottom: "1px solid #111827",
+  color: "#e5e7eb",
 };
+
 
 
 
