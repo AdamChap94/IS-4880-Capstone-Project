@@ -72,68 +72,73 @@ export default function App() {
         </p>
       </header>
 
-     <div
-  style={{
-    maxWidth: 980,
-    margin: "28px auto 36px",
-    padding: "0 16px",
-    width: "100%",
-    flex: 1,
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",   
-  }}
->
-
-        {/* Tabs */}
+      {/* Main content container */}
+      <div
+        style={{
+          maxWidth: 980,
+          margin: "28px auto 36px",
+          padding: "0 16px",
+          width: "100%",
+          flex: 1,
+        }}
+      >
+        {/* Tabs row (full width, center the pill) */}
         <div
           style={{
-            display: "inline-flex",
-            gap: 8,
+            width: "100%",
+            display: "flex",
+            justifyContent: "center",
             marginBottom: 24,
-            padding: 4,
-            borderRadius: 999,
-            background: "rgba(15,23,42,0.9)",
-            boxShadow: "0 10px 30px rgba(15,23,42,0.7)",
-            border: "1px solid rgba(75,85,99,0.7)",
           }}
         >
-          <button
-            onClick={() => setView("send")}
-            className="btn-hover"
+          <div
             style={{
-              padding: "8px 22px",
-              background:
-                view === "send"
-                  ? brandBlue
-                  : "linear-gradient(to right, #020617, #111827)",
-              color: view === "send" ? "#f9fafb" : "#9ca3af",
-              border: "none",
+              display: "inline-flex",
+              gap: 8,
+              padding: 4,
               borderRadius: 999,
-              cursor: "pointer",
-              fontSize: 13,
+              background: "rgba(15,23,42,0.9)",
+              boxShadow: "0 10px 30px rgba(15,23,42,0.7)",
+              border: "1px solid rgba(75,85,99,0.7)",
             }}
           >
-            Sender
-          </button>
-          <button
-            onClick={() => setView("receive")}
-            className="btn-hover"
-            style={{
-              padding: "8px 22px",
-              background:
-                view === "receive"
-                  ? brandBlue
-                  : "linear-gradient(to right, #020617, #111827)",
-              color: view === "receive" ? "#f9fafb" : "#9ca3af",
-              border: "none",
-              borderRadius: 999,
-              cursor: "pointer",
-              fontSize: 13,
-            }}
-          >
-            Receiver
-          </button>
+            <button
+              onClick={() => setView("send")}
+              className="btn-hover"
+              style={{
+                padding: "8px 22px",
+                background:
+                  view === "send"
+                    ? brandBlue
+                    : "linear-gradient(to right, #020617, #111827)",
+                color: view === "send" ? "#f9fafb" : "#9ca3af",
+                border: "none",
+                borderRadius: 999,
+                cursor: "pointer",
+                fontSize: 13,
+              }}
+            >
+              Sender
+            </button>
+            <button
+              onClick={() => setView("receive")}
+              className="btn-hover"
+              style={{
+                padding: "8px 22px",
+                background:
+                  view === "receive"
+                    ? brandBlue
+                    : "linear-gradient(to right, #020617, #111827)",
+                color: view === "receive" ? "#f9fafb" : "#9ca3af",
+                border: "none",
+                borderRadius: 999,
+                cursor: "pointer",
+                fontSize: 13,
+              }}
+            >
+              Receiver
+            </button>
+          </div>
         </div>
 
         {view === "send" ? (
@@ -225,19 +230,20 @@ function SenderPage({ brandBlue, brandGold }) {
   };
 
   return (
-  <div
-    className="fade-in"
-    style={{
-      background: "rgba(255, 255, 255, 0.85)",
-      backdropFilter: "blur(6px)",
-      padding: 22,
-      borderRadius: 16,
-      boxShadow: "0 18px 40px rgba(0,0,0,0.85)",
-      border: "1px solid rgba(0,0,0,0.08)",
-      width: "100%",       
-      maxWidth: 900,      
-    }}
-  >
+    <div
+      className="fade-in"
+      style={{
+        background: "rgba(255, 255, 255, 0.85)",
+        backdropFilter: "blur(6px)",
+        padding: 22,
+        borderRadius: 16,
+        boxShadow: "0 18px 40px rgba(0,0,0,0.85)",
+        border: "1px solid rgba(0,0,0,0.08)",
+        width: "100%",
+        maxWidth: 900,
+        margin: "0 auto",
+      }}
+    >
       <h2
         style={{
           marginTop: 0,
@@ -254,7 +260,9 @@ function SenderPage({ brandBlue, brandGold }) {
         Message ID to test duplicate handling.
       </p>
 
-      <label style={{ display: "block", marginBottom: 6, fontSize: 13, color: "#111827" }}>
+      <label
+        style={{ display: "block", marginBottom: 6, fontSize: 13, color: "#111827" }}
+      >
         Message
       </label>
       <textarea
@@ -279,7 +287,9 @@ function SenderPage({ brandBlue, brandGold }) {
 
       <div style={{ display: "flex", gap: 12, marginBottom: 14 }}>
         <div style={{ flex: 1 }}>
-          <label style={{ display: "block", fontSize: 12, marginBottom: 4, color: "#111827" }}>
+          <label
+            style={{ display: "block", fontSize: 12, marginBottom: 4, color: "#111827" }}
+          >
             Message ID (optional)
           </label>
           <input
@@ -422,20 +432,22 @@ function ReceiverPage({ brandBlue, brandGold }) {
   }
 
   return (
-  <div
-    className="fade-in"
-    style={{
-      background: "rgba(255, 255, 255, 0.85)",
-      backdropFilter: "blur(6px)",
-      padding: 22,
-      borderRadius: 16,
-      boxShadow: "0 18px 40px rgba(0,0,0,0.85)",
-      border: "1px solid rgba(0,0,0,0.08)",
-      marginTop: 24,
-      width: "100%",
-      maxWidth: 900,
-    }}
-  >
+    <div
+      className="fade-in"
+      style={{
+        background: "rgba(255, 255, 255, 0.85)",
+        backdropFilter: "blur(6px)",
+        padding: 22,
+        borderRadius: 16,
+        boxShadow: "0 18px 40px rgba(0,0,0,0.85)",
+        border: "1px solid rgba(0,0,0,0.08)",
+        marginTop: 24,
+        width: "100%",
+        maxWidth: 900,
+        marginLeft: "auto",
+        marginRight: "auto",
+      }}
+    >
       <h2
         style={{
           marginTop: 0,
@@ -469,7 +481,9 @@ function ReceiverPage({ brandBlue, brandGold }) {
         }}
       >
         <div>
-          <label style={{ display: "block", fontSize: 12, marginBottom: 4, color: "#111827" }}>
+          <label
+            style={{ display: "block", fontSize: 12, marginBottom: 4, color: "#111827" }}
+          >
             Message ID
           </label>
           <input
@@ -488,7 +502,9 @@ function ReceiverPage({ brandBlue, brandGold }) {
           />
         </div>
         <div>
-          <label style={{ display: "block", fontSize: 12, marginBottom: 4, color: "#111827" }}>
+          <label
+            style={{ display: "block", fontSize: 12, marginBottom: 4, color: "#111827" }}
+          >
             Source
           </label>
           <input
@@ -507,7 +523,9 @@ function ReceiverPage({ brandBlue, brandGold }) {
           />
         </div>
         <div>
-          <label style={{ display: "block", fontSize: 12, marginBottom: 4, color: "#111827" }}>
+          <label
+            style={{ display: "block", fontSize: 12, marginBottom: 4, color: "#111827" }}
+          >
             Message text
           </label>
           <input
@@ -526,7 +544,9 @@ function ReceiverPage({ brandBlue, brandGold }) {
           />
         </div>
         <div>
-          <label style={{ display: "block", fontSize: 12, marginBottom: 4, color: "#111827" }}>
+          <label
+            style={{ display: "block", fontSize: 12, marginBottom: 4, color: "#111827" }}
+          >
             Publish date and time (24-hour)
           </label>
           <input
@@ -545,7 +565,9 @@ function ReceiverPage({ brandBlue, brandGold }) {
           />
         </div>
         <div>
-          <label style={{ display: "block", fontSize: 12, marginBottom: 4, color: "#111827" }}>
+          <label
+            style={{ display: "block", fontSize: 12, marginBottom: 4, color: "#111827" }}
+          >
             Is duplicate
           </label>
           <select
@@ -666,11 +688,18 @@ function ReceiverPage({ brandBlue, brandGold }) {
                     }}
                   >
                     <td style={tdStyle}>{m.messageId || m.id || "N/A"}</td>
-                    <td style={{ ...tdStyle, maxWidth: 260, wordBreak: "break-word" }}>
+                    <td
+                      style={{
+                        ...tdStyle,
+                        maxWidth: 260,
+                        wordBreak: "break-word",
+                      }}
+                    >
                       {m.data || m.message || m.text || ""}
                     </td>
                     <td style={tdStyle}>
-                      {(m.attributes && (m.attributes.source || m.attributes.Source)) ||
+                      {(m.attributes &&
+                        (m.attributes.source || m.attributes.Source)) ||
                         m.source ||
                         ""}
                     </td>
@@ -777,6 +806,7 @@ const tdStyle = {
   borderBottom: "1px solid #111827",
   color: "#e5e7eb",
 };
+
 
 
 
