@@ -18,7 +18,7 @@ export default function App() {
         color: "#e5e7eb",
         fontFamily:
           '-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
-        overflowX: "hidden", // prevent any horizontal spill on mobile
+        overflowX: "hidden", 
       }}
     >
       <style>{`
