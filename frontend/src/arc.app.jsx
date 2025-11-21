@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 const API_BASE = import.meta.env.VITE_API_BASE || "";
 
 export default function App() {
-  const [view, setView] = useState("send"); 
+  const [view, setView] = useState("send");
   const brandBlue = "#003366";
   const brandGold = "#FFC72C";
 
@@ -12,7 +12,7 @@ export default function App() {
     <div
       style={{
         minHeight: "100vh",
-       background: "linear-gradient(to bottom right, #f5f7fa, #e2e8f0)",
+        background: "linear-gradient(to bottom right, #f5f7fa, #e2e8f0)",
         display: "flex",
         flexDirection: "column",
         color: "#e5e7eb",
@@ -224,32 +224,31 @@ function SenderPage({ brandBlue, brandGold }) {
     <div
       className="fade-in"
       style={{
-        background:
-       background: "rgba(255, 255, 255, 0.85)",
-      backdropFilter: "blur(6px)",
+        background: "rgba(255, 255, 255, 0.85)",
+        backdropFilter: "blur(6px)",
         padding: 22,
         borderRadius: 16,
         boxShadow: "0 18px 40px rgba(0,0,0,0.85)",
         border: "1px solid rgba(0,0,0,0.08)",
-     }}
+      }}
     >
       <h2
         style={{
           marginTop: 0,
-          color: "#e5e7eb",
-          borderBottom: `1px solid rgba(75,85,99,0.9)`,
+          color: "#1f2937",
+          borderBottom: `1px solid rgba(75,85,99,0.3)`,
           paddingBottom: 6,
           fontSize: 17,
         }}
       >
         Sender page
       </h2>
-      <p style={{ color: "#9ca3af", fontSize: 13, marginTop: 8, marginBottom: 16 }}>
+      <p style={{ color: "#4b5563", fontSize: 13, marginTop: 8, marginBottom: 16 }}>
         Publish messages into the Pub/Sub topic through the backend. Use an optional
         Message ID to test duplicate handling.
       </p>
 
-      <label style={{ display: "block", marginBottom: 6, fontSize: 13 }}>
+      <label style={{ display: "block", marginBottom: 6, fontSize: 13, color: "#111827" }}>
         Message
       </label>
       <textarea
@@ -258,14 +257,14 @@ function SenderPage({ brandBlue, brandGold }) {
           height: 130,
           padding: 10,
           borderRadius: 10,
-          border: "1px solid #1f2937",
+          border: "1px solid #cbd5f5",
           marginBottom: 12,
           resize: "none",
           overflowY: "auto",
           boxSizing: "border-box",
           fontSize: 14,
-          background: "#020617",
-          color: "#e5e7eb",
+          background: "#ffffff",
+          color: "#0f172a",
         }}
         placeholder="Type a message to publish..."
         value={message}
@@ -274,7 +273,7 @@ function SenderPage({ brandBlue, brandGold }) {
 
       <div style={{ display: "flex", gap: 12, marginBottom: 14 }}>
         <div style={{ flex: 1 }}>
-          <label style={{ display: "block", fontSize: 12, marginBottom: 4 }}>
+          <label style={{ display: "block", fontSize: 12, marginBottom: 4, color: "#111827" }}>
             Message ID (optional)
           </label>
           <input
@@ -282,10 +281,10 @@ function SenderPage({ brandBlue, brandGold }) {
               width: "100%",
               padding: 8,
               borderRadius: 10,
-              border: "1px solid #1f2937",
+              border: "1px solid #cbd5f5",
               fontSize: 13,
-              background: "#020617",
-              color: "#e5e7eb",
+              background: "#ffffff",
+              color: "#0f172a",
             }}
             value={messageId}
             onChange={(e) => setMessageId(e.target.value)}
@@ -313,7 +312,7 @@ function SenderPage({ brandBlue, brandGold }) {
       </button>
 
       {feedback ? (
-        <p style={{ marginTop: 12, fontSize: 13, color: "#e5e7eb" }}>{feedback}</p>
+        <p style={{ marginTop: 12, fontSize: 13, color: "#111827" }}>{feedback}</p>
       ) : null}
     </div>
   );
@@ -420,29 +419,27 @@ function ReceiverPage({ brandBlue, brandGold }) {
     <div
       className="fade-in"
       style={{
-        background:
-         background: "rgba(255, 255, 255, 0.85)",
+        background: "rgba(255, 255, 255, 0.85)",
         backdropFilter: "blur(6px)",
         padding: 22,
         borderRadius: 16,
         boxShadow: "0 18px 40px rgba(0,0,0,0.85)",
-       border: "1px solid rgba(0,0,0,0.08)",
-
+        border: "1px solid rgba(0,0,0,0.08)",
         marginTop: 24,
       }}
     >
       <h2
         style={{
           marginTop: 0,
-          color: "#e5e7eb",
-          borderBottom: `1px solid rgba(75,85,99,0.9)`,
+          color: "#1f2937",
+          borderBottom: `1px solid rgba(75,85,99,0.3)`,
           paddingBottom: 6,
           fontSize: 17,
         }}
       >
         Receiver page
       </h2>
-      <p style={{ color: "#9ca3af", fontSize: 13, marginBottom: 10 }}>
+      <p style={{ color: "#4b5563", fontSize: 13, marginBottom: 10 }}>
         View messages stored in the database. Use the filters below to locate specific
         messages by ID, source, text, publish timestamp, or duplicate status.
       </p>
@@ -464,7 +461,7 @@ function ReceiverPage({ brandBlue, brandGold }) {
         }}
       >
         <div>
-          <label style={{ display: "block", fontSize: 12, marginBottom: 4 }}>
+          <label style={{ display: "block", fontSize: 12, marginBottom: 4, color: "#111827" }}>
             Message ID
           </label>
           <input
@@ -474,16 +471,16 @@ function ReceiverPage({ brandBlue, brandGold }) {
               width: "100%",
               padding: 6,
               borderRadius: 10,
-              border: "1px solid #1f2937",
+              border: "1px solid #cbd5f5",
               fontSize: 12,
-              background: "#020617",
-              color: "#e5e7eb",
+              background: "#ffffff",
+              color: "#0f172a",
             }}
             placeholder=""
           />
         </div>
         <div>
-          <label style={{ display: "block", fontSize: 12, marginBottom: 4 }}>
+          <label style={{ display: "block", fontSize: 12, marginBottom: 4, color: "#111827" }}>
             Source
           </label>
           <input
@@ -493,16 +490,16 @@ function ReceiverPage({ brandBlue, brandGold }) {
               width: "100%",
               padding: 6,
               borderRadius: 10,
-              border: "1px solid #1f2937",
+              border: "1px solid #cbd5f5",
               fontSize: 12,
-              background: "#020617",
-              color: "#e5e7eb",
+              background: "#ffffff",
+              color: "#0f172a",
             }}
             placeholder="ui"
           />
         </div>
         <div>
-          <label style={{ display: "block", fontSize: 12, marginBottom: 4 }}>
+          <label style={{ display: "block", fontSize: 12, marginBottom: 4, color: "#111827" }}>
             Message text
           </label>
           <input
@@ -512,16 +509,16 @@ function ReceiverPage({ brandBlue, brandGold }) {
               width: "100%",
               padding: 6,
               borderRadius: 10,
-              border: "1px solid #1f2937",
+              border: "1px solid #cbd5f5",
               fontSize: 12,
-              background: "#020617",
-              color: "#e5e7eb",
+              background: "#ffffff",
+              color: "#0f172a",
             }}
             placeholder="Full or partial text..."
           />
         </div>
         <div>
-          <label style={{ display: "block", fontSize: 12, marginBottom: 4 }}>
+          <label style={{ display: "block", fontSize: 12, marginBottom: 4, color: "#111827" }}>
             Publish date and time (24-hour)
           </label>
           <input
@@ -532,15 +529,15 @@ function ReceiverPage({ brandBlue, brandGold }) {
               width: "100%",
               padding: 6,
               borderRadius: 10,
-              border: "1px solid #1f2937",
+              border: "1px solid #cbd5f5",
               fontSize: 12,
-              background: "#020617",
-              color: "#e5e7eb",
+              background: "#ffffff",
+              color: "#0f172a",
             }}
           />
         </div>
         <div>
-          <label style={{ display: "block", fontSize: 12, marginBottom: 4 }}>
+          <label style={{ display: "block", fontSize: 12, marginBottom: 4, color: "#111827" }}>
             Is duplicate
           </label>
           <select
@@ -550,10 +547,10 @@ function ReceiverPage({ brandBlue, brandGold }) {
               width: "100%",
               padding: 6,
               borderRadius: 10,
-              border: "1px solid #1f2937",
+              border: "1px solid #cbd5f5",
               fontSize: 12,
-              background: "#020617",
-              color: "#e5e7eb",
+              background: "#ffffff",
+              color: "#0f172a",
             }}
           >
             <option value="">T/F</option>
@@ -566,7 +563,7 @@ function ReceiverPage({ brandBlue, brandGold }) {
       <hr
         style={{
           border: "none",
-          borderTop: "1px solid rgba(55,65,81,0.9)",
+          borderTop: "1px solid rgba(148,163,184,0.8)",
           margin: "6px 0 12px",
         }}
       />
@@ -605,7 +602,7 @@ function ReceiverPage({ brandBlue, brandGold }) {
         >
           Clear search
         </button>
-        <label style={{ marginLeft: "auto", fontSize: 12, color: "#9ca3af" }}>
+        <label style={{ marginLeft: "auto", fontSize: 12, color: "#6b7280" }}>
           <input
             type="checkbox"
             checked={autoRefresh}
@@ -617,7 +614,7 @@ function ReceiverPage({ brandBlue, brandGold }) {
       </div>
 
       {messages.length === 0 ? (
-        <p style={{ fontSize: 13, color: "#9ca3af" }}>No messages found.</p>
+        <p style={{ fontSize: 13, color: "#6b7280" }}>No messages found.</p>
       ) : (
         <div style={{ overflowX: "auto" }}>
           <table
@@ -735,7 +732,7 @@ function ReceiverPage({ brandBlue, brandGold }) {
           >
             Prev
           </button>
-          <span style={{ fontSize: 12, color: "#9ca3af" }}>
+          <span style={{ fontSize: 12, color: "#6b7280" }}>
             Page {page} of {Math.ceil(total / pageSize) || 1}
           </span>
           <button
@@ -772,6 +769,7 @@ const tdStyle = {
   borderBottom: "1px solid #111827",
   color: "#e5e7eb",
 };
+
 
 
 
