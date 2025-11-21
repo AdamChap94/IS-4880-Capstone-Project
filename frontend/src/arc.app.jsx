@@ -468,12 +468,6 @@ function ReceiverPage({ brandBlue, brandGold }) {
         messages by ID, source, text, publish timestamp, or duplicate status.
       </p>
 
-      {loading && (
-        <p style={{ fontSize: 11, color: "#6b7280", marginTop: 0, marginBottom: 8 }}>
-          Syncing messages from backend...
-        </p>
-      )}
-
       {/* Filters */}
       <div
         style={{
@@ -551,7 +545,7 @@ function ReceiverPage({ brandBlue, brandGold }) {
           <label
             style={{ display: "block", fontSize: 12, marginBottom: 4, color: "#111827" }}
           >
-            Publish date and time (24-hour)
+            Publish date and time
           </label>
           <input
             type="datetime-local"
