@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 const API_BASE = import.meta.env.VITE_API_BASE || "";
 
 export default function App() {
-  const [view, setView] = useState("send"); // "send" | "receive"
+  const [view, setView] = useState("send"); 
   const brandBlue = "#003366";
   const brandGold = "#FFC72C";
 
@@ -20,7 +20,6 @@ export default function App() {
           '-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
       }}
     >
-      {/* Global styles for animations, hover, and field focus */}
       <style>{`
         .fade-in {
           animation: fadeIn 0.25s ease-in-out;
