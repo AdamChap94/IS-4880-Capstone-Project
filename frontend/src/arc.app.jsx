@@ -12,7 +12,7 @@ export default function App() {
     <div
       style={{
         minHeight: "100vh",
-        background: "radial-gradient(circle at top, #1e293b 0, #020617 45%, #000 100%)",
+       background: "linear-gradient(to bottom right, #f5f7fa, #e2e8f0)",
         display: "flex",
         flexDirection: "column",
         color: "#e5e7eb",
