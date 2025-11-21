@@ -154,19 +154,23 @@ function SenderPage({ brandBlue, brandGold }) {
       <label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
         Message
       </label>
-     <textarea
+    <textarea
   style={{
     width: "100%",
-    minHeight: 100,
+    height: 120,           
     padding: 8,
     borderRadius: 6,
     border: "1px solid #cbd5f5",
     marginBottom: 12,
+    resize: "none",        
+    overflowY: "auto",     
+    boxSizing: "border-box" 
   }}
   placeholder="Type a message."
   value={message}
   onChange={(e) => setMessage(e.target.value)}
 />
+
 
       <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
         <div style={{ flex: 1 }}>
