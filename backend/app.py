@@ -399,7 +399,7 @@ def list_messages():
     start  = request.args.get("start", "").strip()
     end    = request.args.get("end", "").strip()
     dup    = request.args.get("is_duplicate", "").strip().lower()
-    text_q = request.args.get("text", "").strip()  # NEW: message text search
+    text_q = request.args.get("text", "").strip()  # message text search
 
     # pagination
     try:
@@ -422,30 +422,29 @@ def list_messages():
     params: dict[str, object] = {}
 
     if msg_id:
-        # ✅ exact match on client_message_id
+        # exact match on client_message_id
         where.append("client_message_id = :msg_id")
         params["msg_id"] = msg_id
     else:
-        # ✅ only use source filter when we're NOT searching by ID
+        # only use source filter when we're NOT searching by ID
         if source:
             where.append("source = :source")
             params["source"] = source
 
-    # ✅ NEW: case-insensitive partial search on message body
+    # case-insensitive partial search on message body
     if text_q:
         # e.g. text="chi" matches "chicken", "Chili", etc.
         where.append("data ILIKE :text_q")
         params["text_q"] = f"%{text_q}%"
-if start:
-    # treat start as a calendar date (inclusive)
-    where.append("publish_time::date >= :start")
-    params["start"] = start
 
-if end:
-    # treat end as a calendar date (inclusive)
-    where.append("publish_time::date <= :end")
-    params["end"] = end
+    # date range: treat start/end as calendar dates (inclusive)
+    if start:
+        where.append("publish_time::date >= :start")
+        params["start"] = start
 
+    if end:
+        where.append("publish_time::date <= :end")
+        params["end"] = end
 
     if dup in ("true", "false"):
         where.append("is_duplicate = :dup")
@@ -496,6 +495,7 @@ if end:
         })
 
     return jsonify({"items": items, "total": total})
+
 
 
 
