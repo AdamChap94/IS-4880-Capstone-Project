@@ -311,10 +311,10 @@ def publish_route():
     )
     pubsub_id = future.result(timeout=20)
 
-    # persist to Postgres, upsert on client_message_id so duplicates flip the flag
-    try:
+       try:
         with engine.begin() as conn:
             if client_id:
+                # Insert or update based on client_message_id (ID-based dedupe)
                 result = conn.execute(text("""
                     INSERT INTO messages (
                         client_message_id, pubsub_message_id, data, source, attributes, publish_time, is_duplicate
@@ -335,7 +335,7 @@ def publish_route():
                     "attributes": json.dumps(attrs),
                 })
             else:
-                # no client_id provided → insert normally (no dedupe)
+                # No client_id provided → insert normally (no ID-based dedupe)
                 result = conn.execute(text("""
                     INSERT INTO messages (
                         client_message_id, pubsub_message_id, data, source, attributes, publish_time, is_duplicate
@@ -351,23 +351,23 @@ def publish_route():
                     "attributes": json.dumps(attrs),
                 })
 
-            row = result.first()
-            row_id = row.id if row else None
-            is_dup = bool(row.is_duplicate) if row else False
+            # NEW: text-based duplicate detection
+            # For any given message text (data), mark all rows except the first one as duplicates.
+            conn.execute(text("""
+                UPDATE messages
+                SET is_duplicate = TRUE
+                WHERE data = :data
+                  AND id != (
+                      SELECT MIN(id) FROM messages WHERE data = :data
+                  )
+            """), {
+                "data": to_send,
+            })
 
-        return jsonify({
-            "ok": True,
-            "flagged": flagged,
-            "pubsub_message_id": pubsub_id,   # assigned by Pub/Sub
-            "client_message_id": client_id,   # your dedupe key
-            "row_id": row_id,
-            "is_duplicate": is_dup,
-            "data": to_send
-        }), 200
-
-    except Exception as e:
-        app.logger.exception("DB insert/upsert failed")
-        return jsonify({"error": "db_error", "detail": str(e)}), 500
+        # Get the row returned by the INSERT/UPSERT
+        row = result.first()
+        row_id = row.id if row else None
+        is_dup = bool(row.is_duplicate) if row else False
 
 
 
