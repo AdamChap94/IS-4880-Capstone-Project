@@ -364,7 +364,8 @@ function ReceiverPage({ brandBlue, brandGold }) {
 
   const [filterMessageId, setFilterMessageId] = useState("");
   const [filterSource, setFilterSource] = useState("");
-  const [filterPublishAt, setFilterPublishAt] = useState("");
+  const [filterStartDate, setFilterStartDate] = useState("");
+  const [filterEndDate, setFilterEndDate] = useState("");
   const [filterDuplicate, setFilterDuplicate] = useState("");
   const [filterText, setFilterText] = useState("");
 
@@ -375,8 +376,8 @@ function ReceiverPage({ brandBlue, brandGold }) {
     const params = new URLSearchParams();
     if (filterMessageId.trim()) params.append("messageId", filterMessageId.trim());
     if (filterSource.trim()) params.append("source", filterSource.trim());
-    if (filterPublishAt.trim())
-      params.append("publish_datetime", filterPublishAt.trim());
+    if (filterStartDate.trim()) params.append("start", filterStartDate.trim());
+    if (filterEndDate.trim()) params.append("end", filterEndDate.trim());
     if (filterDuplicate) params.append("is_duplicate", filterDuplicate);
     if (filterText.trim()) params.append("text", filterText.trim());
     params.append("page", page);
@@ -465,7 +466,7 @@ function ReceiverPage({ brandBlue, brandGold }) {
       </h2>
       <p style={{ color: "#4b5563", fontSize: 13, marginBottom: 10 }}>
         View messages stored in the database. Use the filters below to locate specific
-        messages by ID, source, text, publish timestamp, or duplicate status.
+        messages by ID, source, text, publish date, or duplicate status.
       </p>
 
       {/* Filters */}
