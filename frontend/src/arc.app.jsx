@@ -360,7 +360,7 @@ function ReceiverPage({ brandBlue, brandGold }) {
   const pageSize = 10;
   const [total, setTotal] = useState(0);
 
-  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [autoRefresh, setAutoRefresh] = useState(false);
 
   const [filterMessageId, setFilterMessageId] = useState("");
   const [filterSource, setFilterSource] = useState("");
