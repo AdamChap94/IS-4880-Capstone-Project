@@ -427,12 +427,14 @@ function ReceiverPage({ brandBlue, brandGold }) {
   function clearFilters() {
     setFilterMessageId("");
     setFilterSource("");
-    setFilterPublishAt("");
+    setFilterStartDate("");
+    setFilterEndDate("");
     setFilterDuplicate("");
     setFilterText("");
     setPage(1);
     load();
   }
+
 
   return (
     <div
@@ -542,16 +544,16 @@ function ReceiverPage({ brandBlue, brandGold }) {
             placeholder="Full or partial text..."
           />
         </div>
-        <div>
+               <div>
           <label
             style={{ display: "block", fontSize: 12, marginBottom: 4, color: "#111827" }}
           >
-            Publish date and time
+            Start date
           </label>
           <input
-            type="datetime-local"
-            value={filterPublishAt}
-            onChange={(e) => setFilterPublishAt(e.target.value)}
+            type="date"
+            value={filterStartDate}
+            onChange={(e) => setFilterStartDate(e.target.value)}
             style={{
               width: "100%",
               padding: 6,
@@ -563,6 +565,29 @@ function ReceiverPage({ brandBlue, brandGold }) {
             }}
           />
         </div>
+
+        <div>
+          <label
+            style={{ display: "block", fontSize: 12, marginBottom: 4, color: "#111827" }}
+          >
+            End date
+          </label>
+          <input
+            type="date"
+            value={filterEndDate}
+            onChange={(e) => setFilterEndDate(e.target.value)}
+            style={{
+              width: "100%",
+              padding: 6,
+              borderRadius: 10,
+              border: "1px solid #cbd5f5",
+              fontSize: 12,
+              background: "#ffffff",
+              color: "#0f172a",
+            }}
+          />
+        </div>
+
         <div>
           <label
             style={{ display: "block", fontSize: 12, marginBottom: 4, color: "#111827" }}
