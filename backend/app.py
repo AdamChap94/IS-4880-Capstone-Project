@@ -186,17 +186,25 @@ for w in _white: profanity.remove_word(w)
 
 def _norm(t: str) -> str:
     t = ud.normalize("NFKC", t)
-    # basic leetspeak normalization
-    t = re.sub(r"[@4]", "a", t, flags=re.I)
-    t = re.sub(r"[!1]", "i", t, flags=re.I)
-    t = re.sub(r"[$5]", "s", t, flags=re.I)
-    # collapse 3+ repeated chars down to 2 (loooong -> loong)
-    t = re.sub(r"(.)\1{2,}", r"\1\1", t)
-    # NEW: split doubled words like "shitshit" -> "shit shit"
-    # any 3+ letter word immediately repeated with no space
-    t = re.sub(r"\b([a-z]{3,})\1\b", r"\1 \1", t, flags=re.I)
-    return t
 
+    # --- basic leetspeak normalization ---
+    t = re.sub(r"[@4]", "a", t, flags=re.I)
+    t = re.sub(r"[!1|]", "i", t, flags=re.I)
+    t = re.sub(r"[$5]", "s", t, flags=re.I)
+    t = re.sub(r"[0]", "o", t, flags=re.I)
+    t = re.sub(r"[3]", "e", t, flags=re.I)
+
+    # collapse 3+ repeated characters (e.g. loooove → loove)
+    t = re.sub(r"(.)\1{2,}", r"\1\1", t)
+
+    t = re.sub(
+        r"\b([a-z]{3,})[\W_]*\1\b",
+        r"\1 \1",
+        t,
+        flags=re.I
+    )
+
+    return t
 
 def contains_bad(t: str) -> bool:
     return profanity.contains_profanity(_norm(t))
