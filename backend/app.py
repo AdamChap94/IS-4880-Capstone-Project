@@ -311,7 +311,7 @@ def publish_route():
     )
     pubsub_id = future.result(timeout=20)
 
-       try:
+    try:
         with engine.begin() as conn:
             if client_id:
                 # Insert or update based on client_message_id (ID-based dedupe)
