@@ -436,14 +436,16 @@ def list_messages():
         # e.g. text="chi" matches "chicken", "Chili", etc.
         where.append("data ILIKE :text_q")
         params["text_q"] = f"%{text_q}%"
+if start:
+    # treat start as a calendar date (inclusive)
+    where.append("publish_time::date >= :start")
+    params["start"] = start
 
-    if start:
-        where.append("publish_time >= :start")
-        params["start"] = start
+if end:
+    # treat end as a calendar date (inclusive)
+    where.append("publish_time::date <= :end")
+    params["end"] = end
 
-    if end:
-        where.append("publish_time <= :end")
-        params["end"] = end
 
     if dup in ("true", "false"):
         where.append("is_duplicate = :dup")
