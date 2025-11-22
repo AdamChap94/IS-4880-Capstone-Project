@@ -311,16 +311,19 @@ def publish_route():
     )
     pubsub_id = future.result(timeout=20)
 
-    try:
+        try:
         with engine.begin() as conn:
+
+            # Insert row (ID-based dedupe using client_message_id)
             if client_id:
-                # Insert or update based on client_message_id (ID-based dedupe)
                 result = conn.execute(text("""
                     INSERT INTO messages (
-                        client_message_id, pubsub_message_id, data, source, attributes, publish_time, is_duplicate
+                        client_message_id, pubsub_message_id, data, source,
+                        attributes, publish_time, is_duplicate
                     )
                     VALUES (
-                        :client_message_id, :pubsub_message_id, :data, :source, CAST(:attributes AS JSONB), NOW(), FALSE
+                        :client_message_id, :pubsub_message_id, :data, :source,
+                        CAST(:attributes AS JSONB), NOW(), FALSE
                     )
                     ON CONFLICT (client_message_id)
                     DO UPDATE SET
@@ -335,13 +338,14 @@ def publish_route():
                     "attributes": json.dumps(attrs),
                 })
             else:
-                # No client_id provided → insert normally (no ID-based dedupe)
                 result = conn.execute(text("""
                     INSERT INTO messages (
-                        client_message_id, pubsub_message_id, data, source, attributes, publish_time, is_duplicate
+                        client_message_id, pubsub_message_id, data, source,
+                        attributes, publish_time, is_duplicate
                     )
                     VALUES (
-                        NULL, :pubsub_message_id, :data, :source, CAST(:attributes AS JSONB), NOW(), FALSE
+                        NULL, :pubsub_message_id, :data, :source,
+                        CAST(:attributes AS JSONB), NOW(), FALSE
                     )
                     RETURNING id, is_duplicate
                 """), {
@@ -352,7 +356,6 @@ def publish_route():
                 })
 
             # NEW: text-based duplicate detection
-            # For any given message text (data), mark all rows except the first one as duplicates.
             conn.execute(text("""
                 UPDATE messages
                 SET is_duplicate = TRUE
@@ -361,18 +364,26 @@ def publish_route():
                       SELECT MIN(id) FROM messages WHERE data = :data
                   )
             """), {
-                "data": to_send,
+                "data": to_send
             })
 
-        # Get the row returned by the INSERT/UPSERT
-        row = result.first()
-        row_id = row.id if row else None
-        is_dup = bool(row.is_duplicate) if row else False
+            row = result.first()
+            row_id = row.id if row else None
+            is_dup = bool(row.is_duplicate) if row else False
 
+        return jsonify({
+            "ok": True,
+            "flagged": flagged,
+            "pubsub_message_id": pubsub_id,
+            "client_message_id": client_id,
+            "row_id": row_id,
+            "is_duplicate": is_dup,
+            "data": to_send
+        }), 200
 
-
-
-
+    except Exception as e:
+        app.logger.exception("DB insert/upsert failed")
+        return jsonify({"error": "db_error", "detail": str(e)}), 500
 
 # helper if your datetime-local is missing seconds
 def _parse_dt(val: str):
