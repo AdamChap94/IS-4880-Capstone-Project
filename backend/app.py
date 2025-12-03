@@ -75,6 +75,28 @@ with engine.begin() as conn:
             is_duplicate BOOLEAN NOT NULL DEFAULT FALSE
         );
     """))
+
+    conn.execute(text("""
+        CREATE INDEX IF NOT EXISTS idx_messages_client_message_id
+        ON messages(client_message_id);
+    """))
+
+    conn.execute(text("""
+        CREATE INDEX IF NOT EXISTS idx_messages_publish_time
+        ON messages(publish_time DESC);
+    """))
+
+    # Ensure the numeric constraint exists in new DBs too
+    try:
+        conn.execute(text("""
+            ALTER TABLE messages
+            ADD CONSTRAINT message_id_numeric
+            CHECK (client_message_id ~ '^[0-9]+$');
+        """))
+    except Exception:
+        # Likely "constraint already exists" – safe to ignore
+        pass
+
     # helpful index for lookups by client_message_id
     conn.execute(text("""
         CREATE INDEX IF NOT EXISTS idx_messages_client_message_id
@@ -309,12 +331,24 @@ def publish_route():
     payload = request.get_json(silent=True) or {}
     raw = (payload.get("data") or payload.get("message") or "").strip()
     attrs = payload.get("attributes") or {}
-    if not raw:
-        return jsonify({"error": "message is required"}), 400
+        # client-provided dedupe key 
+    client_id_raw = (attrs.get("messageId") or "").strip()
 
-    # client-provided dedupe key (from the Sender page input)
-    client_id = (attrs.get("messageId") or "").strip() or None
+    # 1) Require a Message ID
+    if not client_id_raw:
+        return jsonify({"error": "Message ID is required."}), 400
+
+    # 2) Enforce numeric-only
+    if not client_id_raw.isdigit():
+        return jsonify({"error": "Message ID must contain only numbers."}), 400
+
+    # 3) Put a reasonable length cap
+    if len(client_id_raw) > 18:
+        return jsonify({"error": "Message ID is too long."}), 400
+
+    client_id = client_id_raw
     source = (attrs.get("source") or "").strip() or None
+
 
     # profanity handling
     flagged = contains_bad(raw)
