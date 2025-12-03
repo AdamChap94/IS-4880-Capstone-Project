@@ -59,8 +59,8 @@ engine = create_engine(
 # Create messages table if it doesn't exist
 from sqlalchemy import text
 
+# Create messages table if it doesn't exist
 with engine.begin() as conn:
-    # Create table if not exists
     conn.execute(text("""
         CREATE TABLE IF NOT EXISTS messages (
             id BIGSERIAL PRIMARY KEY,
@@ -74,22 +74,24 @@ with engine.begin() as conn:
         );
     """))
 
+# Run constraint creation in a SEPARATE transaction
 try:
-    conn.execute(text("""
-        ALTER TABLE messages
-        ADD CONSTRAINT message_id_numeric
-        CHECK (client_message_id ~ '^[0-9]+$');
-    """))
+    with engine.begin() as conn:
+        conn.execute(text("""
+            ALTER TABLE messages
+            ADD CONSTRAINT message_id_numeric
+            CHECK (client_message_id ~ '^[0-9]+$');
+        """))
 except Exception as e:
     msg = str(e).lower()
-    # Catch ANY variation of "constraint exists"
-    if "already exists" in msg or "duplicate" in msg or "constraint" in msg:
-        pass  # ignore — constraint already exists
+    # Ignore *only* the "already exists" error
+    if "already exists" in msg or "duplicate" in msg:
+        pass
     else:
-        raise   # rethrow unexpected errors
+        raise
 
-
-    # Safe: indexes
+# Run indexes in a clean, separate transaction
+with engine.begin() as conn:
     conn.execute(text("""
         CREATE INDEX IF NOT EXISTS idx_messages_client_message_id
         ON messages(client_message_id);
@@ -99,6 +101,7 @@ except Exception as e:
         CREATE INDEX IF NOT EXISTS idx_messages_publish_time
         ON messages(publish_time DESC);
     """))
+
 
 def start_sync_poll_loop():
     sub = pubsub_v1.SubscriberClient(credentials=CREDS)
