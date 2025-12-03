@@ -28,6 +28,7 @@ CREDS = service_account.Credentials.from_service_account_file(CREDS_PATH)
 from google.cloud.sql.connector import Connector, IPTypes
 from sqlalchemy import create_engine, text
 from sqlalchemy import CheckConstraint
+from sqlalchemy import text
 import os
 
 DB_INSTANCE = os.getenv("DB_INSTANCE")
@@ -44,7 +45,7 @@ def getconn():
         user=DB_USER,
         password=DB_PASS,
         db=DB_NAME,
-        ip_type=IPTypes.PUBLIC  # Cloud SQL public IP
+        ip_type=IPTypes.PUBLIC  
     )
 
 engine = create_engine(
@@ -56,10 +57,7 @@ engine = create_engine(
     pool_recycle=1800,
     pool_timeout=30,
 )
-# Create messages table if it doesn't exist
-from sqlalchemy import text
 
-# Create messages table if it doesn't exist
 with engine.begin() as conn:
     conn.execute(text("""
         CREATE TABLE IF NOT EXISTS messages (
@@ -90,7 +88,6 @@ except Exception as e:
     else:
         raise
 
-# Run indexes in a clean, separate transaction
 with engine.begin() as conn:
     conn.execute(text("""
         CREATE INDEX IF NOT EXISTS idx_messages_client_message_id
@@ -117,7 +114,7 @@ def start_sync_poll_loop():
                     retry=None,
                     timeout=10,
                 )
-                # mark that we attempted a pull (even if empty)
+                # mark attempted pull 
                 _LAST_PULL_AT = int(time.time())
 
                 if resp.received_messages:
@@ -167,14 +164,13 @@ def _now_iso():
 
 # Flask
 app = Flask(__name__)
-CORS(app)  # TODO: restrict in prod
-
+CORS(app)  
 # Publisher + topic path
 try:
     publisher = pubsub_v1.PublisherClient(credentials=CREDS)
     topic_path = publisher.topic_path(PROJECT_ID, TOPIC_ID)
     print(f"[BOOT] topic_path={topic_path}", flush=True)
-    # Verify topic exists (helps catch wrong project/topic)
+    # Verify topic exists 
     admin_pub = pubsub_v1.PublisherClient(credentials=CREDS)
     admin_pub.get_topic(request={"topic": topic_path})
     print(f"[BOOT] Verified topic exists: {topic_path}", flush=True)
@@ -183,21 +179,18 @@ except NotFound:
 except Exception as e:
     die(f"Failed to init PublisherClient/topic_path: {e!r}")
 
-# In-memory ring buffer for UI (POC-friendly)
+# In-memory ring buffer for UI 
 RECENT = collections.deque(maxlen=2000)
 RECENT_LOCK = threading.Lock()
 # --- Puller thread guards ---
 SYNC_THREAD_STARTED = False
-
-
-# Keep globals so they don't get GC'd
 SUBSCRIBER = pubsub_v1.SubscriberClient(credentials=CREDS)
 SUB_FUTURE = None
 
 from better_profanity import profanity
 import regex as re, unicodedata as ud
 
-# --- profanity helpers (inline) ---
+# --- profanity helpers  ---
 profanity.load_censor_words()
 _extra = [w.strip() for w in os.getenv("PROFANITY_EXTRA_WORDS","").split(",") if w.strip()]
 _white = [w.strip() for w in os.getenv("PROFANITY_WHITELIST","").split(",") if w.strip()]
@@ -214,7 +207,7 @@ def _norm(t: str) -> str:
     t = re.sub(r"[0]", "o", t, flags=re.I)
     t = re.sub(r"[3]", "e", t, flags=re.I)
 
-    # collapse 3+ repeated characters (e.g. loooove → loove)
+    # collapse 3+ repeated characters 
     t = re.sub(r"(.)\1{2,}", r"\1\1", t)
 
     t = re.sub(
@@ -325,7 +318,6 @@ def publish_route():
     payload = request.get_json(silent=True) or {}
     raw = (payload.get("data") or payload.get("message") or "").strip()
     attrs = payload.get("attributes") or {}
-        # client-provided dedupe key 
     client_id_raw = (attrs.get("messageId") or "").strip()
 
     # 1) Require a Message ID
@@ -336,7 +328,7 @@ def publish_route():
     if not client_id_raw.isdigit():
         return jsonify({"error": "Message ID must contain only numbers."}), 400
 
-    # 3) Put a reasonable length cap
+    # 3) Put length cap
     if len(client_id_raw) > 18:
         return jsonify({"error": "Message ID is too long."}), 400
 
@@ -348,7 +340,7 @@ def publish_route():
     flagged = contains_bad(raw)
     to_send = mask_text(raw) if flagged else raw
 
-    # publish to Pub/Sub (also pass through attributes for traceability)
+    # publish to Pub/Sub & pass through attributes for traceability
     pub_attrs = {k: str(v) for k, v in attrs.items()}
     future = publisher.publish(
         topic_path,
@@ -360,7 +352,6 @@ def publish_route():
     try:
         with engine.begin() as conn:
 
-            # Insert row (ID-based dedupe using client_message_id)
             if client_id:
                 result = conn.execute(text("""
                     INSERT INTO messages (
@@ -401,7 +392,7 @@ def publish_route():
                     "attributes": json.dumps(attrs),
                 })
 
-            # NEW: text-based duplicate detection
+            #  text-based duplicate detection
             conn.execute(text("""
                 UPDATE messages
                 SET is_duplicate = TRUE
@@ -431,7 +422,7 @@ def publish_route():
         app.logger.exception("DB insert/upsert failed")
         return jsonify({"error": "db_error", "detail": str(e)}), 500
 
-# helper if your datetime-local is missing seconds
+# helper if datetime-local is missing seconds
 def _parse_dt(val: str):
     """
     Parse HTML datetime-local (e.g. '2025-11-13T23:09' or '2025-11-13T23:09:57')
@@ -442,7 +433,6 @@ def _parse_dt(val: str):
     try:
         return datetime.fromisoformat(val)
     except ValueError:
-        # try without seconds
         try:
             return datetime.strptime(val, "%Y-%m-%dT%H:%M")
         except ValueError:
@@ -456,7 +446,7 @@ def list_messages():
     start  = request.args.get("start", "").strip()
     end    = request.args.get("end", "").strip()
     dup    = request.args.get("is_duplicate", "").strip().lower()
-    text_q = request.args.get("text", "").strip()  # message text search
+    text_q = request.args.get("text", "").strip()
 
     # pagination
     try:
@@ -490,11 +480,10 @@ def list_messages():
 
     # case-insensitive partial search on message body
     if text_q:
-        # e.g. text="chi" matches "chicken", "Chili", etc.
         where.append("data ILIKE :text_q")
         params["text_q"] = f"%{text_q}%"
 
-    # date range: treat start/end as calendar dates (inclusive)
+    # date range: treat start/end as calendar dates
     if start:
         where.append("publish_time::date >= :start")
         params["start"] = start
@@ -543,7 +532,6 @@ def list_messages():
     for r in rows:
         items.append({
             "id": r.id,
-            # frontend expects "messageId" – use client_message_id
             "messageId": getattr(r, "client_message_id", None),
             "data": r.data,
             "source": r.source,
@@ -558,7 +546,7 @@ def list_messages():
 
 
 
-# --- background poll launcher (ensures thread only starts once) ---
+# --- background poll launcher ---
 from flask import current_app
 import threading
 
@@ -567,24 +555,21 @@ def _start_bg_threads():
     # Prevent multiple threads if Flask reloads workers
     if not app.config.get("SYNC_POLL_STARTED", False):
         t = threading.Thread(
-            target=start_sync_poll_loop,  # your function that loops pulling Pub/Sub
+            target=start_sync_poll_loop,
             name="sync-poll",
             daemon=True
         )
         t.start()
         app.config["SYNC_POLL_STARTED"] = True
 
-# Temporary alias for legacy call names (safe)
+# Temporary alias for legacy call names
 def start_sync_poll():
     return start_sync_poll_loop()
 
-# Register hook (Flask 2.0 doesn't have before_first_request for async workers)
 @app.before_request
 def _ensure_thread():
     _start_bg_threads()
 
-
- # Handy: see which PID is serving you (helps confirm single-process RECENT)
 @app.route("/_debug/pid")
 def debug_pid():
     return jsonify({
@@ -593,8 +578,6 @@ def debug_pid():
         "use_sync_poll": USE_SYNC_POLL,
     }), 200
        
-
-
 def debug_subscription():
     from flask import jsonify
     from google.cloud import pubsub_v1
@@ -651,7 +634,6 @@ def debug_pull_long():
                     }
                     with RECENT_LOCK:
                         RECENT.append(item)
-                # ack everything we got in this batch
                     ack_ids.append(rm.ack_id)
                 sub.acknowledge(request={"subscription": sub_path, "ack_ids": ack_ids})
                 total += len(ack_ids)
@@ -675,7 +657,6 @@ def debug_whoami():
 
 @app.route("/_debug/messages_debug")
 def messages_debug():
-    # ALWAYS read under the same lock used by the poller
     try:
         items = []
         with RECENT_LOCK:
@@ -687,12 +668,11 @@ def messages_debug():
     except Exception as e:
         return {"error": str(e)}, 500
   
+
 # -----------------------------
 # Streaming pull
 # -----------------------------
-# -----------------------------
-# Streaming pull (thread-safe + restart loop)
-# -----------------------------
+
 def start_streaming_pull():
     global SUBSCRIBER, SUB_FUTURE
 
@@ -722,28 +702,20 @@ def start_streaming_pull():
                         with RECENT_LOCK:
                             RECENT.append(item)
 
-                        print(f"[PULL] ✅ {item}", flush=True)
+                        print(f"[PULL]  {item}", flush=True)
                         message.ack()
                     except Exception as e:
-                        print(f"[PULL] ❌ callback error: {e}", flush=True)
+                        print(f"[PULL]  callback error: {e}", flush=True)
                         message.nack()
 
                 SUB_FUTURE = SUBSCRIBER.subscribe(sub_path, callback=callback)
                 print("[PULL] Listening...", flush=True)
                 SUB_FUTURE.result()
             except Exception as e:
-                print(f"[PULL] ⚠️ Stream error, restarting: {e}", flush=True)
+                print(f"[PULL]  Stream error, restarting: {e}", flush=True)
                 time.sleep(2)
 
     threading.Thread(target=run_pull, daemon=True).start()
 
-
-
-
-
-
-
-
-# Local dev only
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
