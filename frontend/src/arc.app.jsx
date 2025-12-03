@@ -176,62 +176,88 @@ function SenderPage({ brandBlue, brandGold }) {
   const [feedback, setFeedback] = useState("");
 
   const send = async () => {
-    if (!message.trim()) {
-      setFeedback("Message cannot be empty.");
+  const trimmedMessage = message.trim();
+  const trimmedId = messageId.trim();
+
+  if (!trimmedMessage) {
+    setFeedback("Message cannot be empty.");
+    return;
+  }
+
+  if (!trimmedId) {
+    setFeedback("Message ID is required and must contain only numbers.");
+    return;
+  }
+
+  if (!/^\d+$/.test(trimmedId)) {
+    setFeedback("Message ID must contain only numbers (0–9).");
+    return;
+  }
+
+  setLoading(true);
+  setFeedback("");
+
+  const attributes = {
+    source: "ui",
+    messageId: trimmedId,
+  };
+
+  const body = {
+    message: trimmedMessage,
+    attributes,
+  };
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15000);
+
+  try {
+    const res = await fetch(`${API_BASE}/publish`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timer);
+
+    const contentType = res.headers.get("content-type") || "";
+    let data = null;
+
+    if (contentType.includes("application/json")) {
+      data = await res.json().catch(() => null);
+    } else {
+      const text = await res.text().catch(() => "");
+      if (text) data = { error: text };
+    }
+
+    if (!res.ok) {
+      const msg =
+        (data && data.error) ||
+        (res.status === 400
+          ? "Message ID must contain only numbers (0–9)."
+          : "Failed to publish message.");
+      setFeedback(msg);
       return;
     }
 
-    setLoading(true);
-    setFeedback("");
-
-    const attributes = {
-      source: "ui",
-      ...(messageId.trim() ? { messageId: messageId.trim() } : {}),
-    };
-
-    const body = {
-      message,
-      attributes,
-    };
-
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 15000);
-
-    try {
-      const res = await fetch(`${API_BASE}/publish`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-        signal: controller.signal,
-      });
-
-      clearTimeout(timer);
-
-      if (!res.ok) {
-        const errText = await res.text().catch(() => "");
-        throw new Error(`Publish failed: ${errText || res.status}`);
-      }
-
-      const data = await res.json().catch(() => ({}));
-
-      setFeedback(
-        `Published${data?.messageId ? ` (id: ${data.messageId})` : ""}${
-          data?.profanity_masked ? " [masked]" : ""
-        }`
-      );
-      setMessage("");
-      setMessageId("");
-    } catch (e) {
-      clearTimeout(timer);
-      setFeedback(
-        e?.name === "AbortError"
-          ? "Publish timed out. Please try again."
-          : "Network error while publishing."
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+    setFeedback(
+      `Published${data?.messageId ? ` (id: ${data.messageId})` : ""}${
+        data?.profanity_masked ? " [masked]" : ""
+      }`
+    );
+    setMessage("");
+    setMessageId("");
+  } catch (e) {
+    clearTimeout(timer);
+    setFeedback(
+      e?.name === "AbortError"
+        ? "Publish timed out. Please try again."
+        : "Network error while publishing."
+    );
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div
@@ -299,19 +325,22 @@ function SenderPage({ brandBlue, brandGold }) {
             Message ID 
           </label>
           <input
-            style={{
-              width: "100%",
-              padding: 8,
-              borderRadius: 10,
-              border: "1px solid #cbd5f5",
-              fontSize: 13,
-              background: "#ffffff",
-              color: "#0f172a",
-            }}
-            value={messageId}
-            onChange={(e) => setMessageId(e.target.value)}
-            placeholder="e.g. Msg-001"
-          />
+  style={{
+    width: "100%",
+    padding: 8,
+    borderRadius: 10,
+    border: "1px solid #cbd5f5",
+    fontSize: 13,
+    background: "#ffffff",
+    color: "#0f172a",
+  }}
+  value={messageId}
+  onChange={(e) => setMessageId(e.target.value)}
+  placeholder="Numbers only, e.g. 12345"
+  inputMode="numeric"
+  pattern="\d*"
+/>
+
         </div>
       </div>
 
