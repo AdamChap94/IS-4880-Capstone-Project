@@ -262,7 +262,7 @@ function SenderPage({ brandBlue, brandGold }) {
         Sender page
       </h2>
       <p style={{ color: "#4b5563", fontSize: 13, marginTop: 8, marginBottom: 16 }}>
-        Publish messages into the Pub/Sub topic through the backend. Use an optional
+        Publish messages into the Pub/Sub topic through the backend. Use a
         Message ID to test duplicate handling.
       </p>
 
@@ -296,7 +296,7 @@ function SenderPage({ brandBlue, brandGold }) {
           <label
             style={{ display: "block", fontSize: 12, marginBottom: 4, color: "#111827" }}
           >
-            Message ID (optional)
+            Message ID 
           </label>
           <input
             style={{
