@@ -74,7 +74,7 @@ with engine.begin() as conn:
         );
     """))
 
- try:
+try:
     conn.execute(text("""
         ALTER TABLE messages
         ADD CONSTRAINT message_id_numeric
