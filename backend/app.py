@@ -85,7 +85,7 @@ with engine.begin() as conn:
 
     # Ensure the numeric constraint exists in new DBs too
     try:
-    conn.execute(text("""
+        conn.execute(text("""
         ALTER TABLE messages
         ADD CONSTRAINT message_id_numeric
         CHECK (client_message_id ~ '^[0-9]+$');
