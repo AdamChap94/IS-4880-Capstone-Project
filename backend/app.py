@@ -74,17 +74,20 @@ with engine.begin() as conn:
         );
     """))
 
-    # Safe: wrap ONLY the constraint creation
-    try:
-        conn.execute(text("""
-            ALTER TABLE messages
-            ADD CONSTRAINT message_id_numeric
-            CHECK (client_message_id ~ '^[0-9]+$');
-        """))
-    except Exception as e:
-        # Ignore: constraint already exists
-        if "already exists" not in str(e).lower():
-            raise
+   try:
+    conn.execute(text("""
+        ALTER TABLE messages
+        ADD CONSTRAINT message_id_numeric
+        CHECK (client_message_id ~ '^[0-9]+$');
+    """))
+except Exception as e:
+    msg = str(e).lower()
+    # Catch ANY variation of "constraint exists"
+    if "already exists" in msg or "duplicate" in msg or "constraint" in msg:
+        pass  # ignore — constraint already exists
+    else:
+        raise   # rethrow unexpected errors
+
 
     # Safe: indexes
     conn.execute(text("""
