@@ -4,7 +4,7 @@ services:
     runtime: python
     rootDir: backend
     buildCommand: pip install -r requirements.txt
-    # Decode the base64 key and then start gunicorn (works on Free)
+    # Decode the base64 key and then start gunicorn 
     startCommand: bash -lc 'echo "$GCP_SA_KEY_B64" | base64 -d > /tmp/gcp-sa.json && export GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp-sa.json && exec gunicorn backend.app:app --workers=1 --worker-class=sync --timeout=120 --bind 0.0.0.0:$PORT'
     plan: free
     envVars:
@@ -14,7 +14,7 @@ services:
         value: app-messages
       - key: SUB_PULL_ID
         value: app-sub-pull-test
-      # paste your base64-encoded JSON key in the Render dashboard for this var
+      # paste base64-encoded JSON key in the Render dashboard for this var
       - key: GCP_SA_KEY_B64
         sync: false
       - key: USE_SYNC_POLL
@@ -22,16 +22,17 @@ services:
       
 
 
-  # --- React frontend (static site) ---
-  - type: web                    # ← not "static"
+  # --- React frontend ---
+  - type: web                    
     name: pubsub-frontend
-    runtime: static              # static sites use runtime: static
+    runtime: static              
     rootDir: frontend
     buildCommand: npm install && npm run build
-    staticPublishPath: dist      # folder to publish (e.g., dist or build)
+    staticPublishPath: dist      
     envVars:
       - key: VITE_API_BASE
         value: https://pubsub-backend.onrender.com
+
 
 
 
