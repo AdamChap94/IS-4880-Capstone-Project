@@ -83,16 +83,16 @@ with engine.begin() as conn:
         ON messages(publish_time DESC);
     """))
 
-    # Ensure the numeric constraint exists in new DBs too
-    try:
-        conn.execute(text("""
+# Inside: with engine.begin() as conn:
+try:
+    conn.execute(text("""
         ALTER TABLE messages
         ADD CONSTRAINT message_id_numeric
         CHECK (client_message_id ~ '^[0-9]+$');
     """))
 except Exception as e:
-    # If it already exists, ignore
-    if "already exists" not in str(e):
+    # Ignore only “already exists” errors
+    if "already exists" not in str(e).lower():
         raise
 
     # helpful index for lookups by client_message_id
