@@ -12,7 +12,7 @@ export default function MessageComposer({ onMessage }) {
     setBusy(true);
     setError(null);
     try {
-      const API = import.meta.env.VITE_API_BASE || ""; // e.g. https://pubsub-backend.onrender.com
+      const API = import.meta.env.VITE_API_BASE || ""; 
       const res = await fetch(`${API}/api/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -20,7 +20,6 @@ export default function MessageComposer({ onMessage }) {
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-      // backend returns: { ok: true, data: "<masked text>", flagged: true|false }
       const { data: maskedText, flagged } = await res.json();
       onMessage({ text: maskedText, flagged });
       setText("");
