@@ -72,21 +72,6 @@ with engine.begin() as conn:
         );
     """))
 
-# Run constraint creation in a SEPARATE transaction
-try:
-    with engine.begin() as conn:
-        conn.execute(text("""
-            ALTER TABLE messages
-            ADD CONSTRAINT message_id_numeric
-            CHECK (client_message_id ~ '^[0-9]+$');
-        """))
-except Exception as e:
-    msg = str(e).lower()
-    # Ignore *only* the "already exists" error
-    if "already exists" in msg or "duplicate" in msg:
-        pass
-    else:
-        raise
 
 with engine.begin() as conn:
     conn.execute(text("""
